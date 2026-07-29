@@ -1,0 +1,172 @@
+// GTASearch — Prisma schema
+// Design: docs/superpowers/specs/2026-07-28-gtasearch-phase1-design.md
+//
+// Phase 1 reads only User and Listing. Every other model is created now so that
+// Phases 2 and 3 never require a destructive migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled, port 6543 — application queries
+  directUrl = env("DIRECT_URL") // session pooler, port 5432 — migrations
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  phone        String?
+  passwordHash String?
+  image        String?
+  createdAt    DateTime @default(now())
+
+  listings            Listing[]
+  savedListings       SavedListing[]
+  sentMessages        Message[]      @relation("MessageSender")
+  receivedMessages    Message[]      @relation("MessageRecipient")
+  buyerConversations  Conversation[] @relation("ConversationBuyer")
+  sellerConversations Conversation[] @relation("ConversationSeller")
+  boostPayments       BoostPayment[]
+  reportsFiled        Report[]
+}
+
+model Listing {
+  id            String  @id @default(cuid())
+  title         String
+  description   String
+  price         Decimal? @db.Decimal(10, 2) // null when priceType is free/contact/trade
+  priceType     String   @default("fixed") // "fixed" | "free" | "contact" | "trade"
+  category      String
+  subcategory   String?
+  city          String
+  neighbourhood String?
+
+  // NEVER exposed to the client. Every listing query must use an explicit
+  // `select` that omits this field; `SELECT *` on listings is prohibited.
+  postalCode String?
+
+  images         String[]
+  status         String    @default("active") // "active" | "sold" | "expired" | "deleted"
+  boostLevel     String    @default("none") // "none" | "top" | "featured" | "super"
+  boostExpiresAt DateTime?
+
+  // Stored rather than derived from createdAt, so relisting works correctly and
+  // the Phase 3 expiry-reminder job has a single source of truth.
+  expiresAt DateTime
+
+  views  Int    @default(0)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Full-text search column. Prisma cannot express `tsvector` or the
+  // GENERATED ALWAYS AS expression, so the migration is hand-edited to create it
+  // as a generated column (title weight A, description weight B) with a GIN
+  // index. Declared here as Unsupported so Prisma does not report schema drift
+  // and try to drop it.
+  searchVector Unsupported("tsvector")?
+
+  conversations Conversation[]
+  messages      Message[]
+  savedBy       SavedListing[]
+  boostPayments BoostPayment[]
+  reports       Report[]
+
+  @@index([category, city, status, createdAt])
+  @@index([status, expiresAt])
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+// Threads a buyer's conversation with a seller about one listing. Without this,
+// two buyers messaging the same seller are indistinguishable and no inbox can
+// be built.
+model Conversation {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId   String
+  buyer     User     @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId  String
+  seller    User     @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
+
+  @@unique([listingId, buyerId])
+  @@index([sellerId, updatedAt])
+  @@index([buyerId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId    String
+  recipient      User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  listingId      String
+  listing        Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([recipientId, readAt])
+}
+
+model SavedListing {
+  userId    String
+  listingId String
+  savedAt   DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([userId, savedAt])
+}
+
+model BoostPayment {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Unique so a replayed Stripe webhook cannot apply the same boost twice.
+  stripeId String @unique
+
+  amount     Decimal  @db.Decimal(10, 2)
+  boostLevel String
+  duration   Int // days
+  status     String   @default("pending") // "pending" | "paid" | "failed" | "refunded"
+  createdAt  DateTime @default(now())
+
+  @@index([listingId])
+  @@index([userId, createdAt])
+}
+
+model Report {
+  id         String  @id @default(cuid())
+  listingId  String
+  listing    Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  // Nullable so anonymous reports are possible and deleting a user does not
+  // erase the moderation record.
+  reporterId String?
+  reporter   User?   @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+
+  reason    String
+  details   String?
+  status    String   @default("open") // "open" | "reviewed" | "actioned" | "dismissed"
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([listingId])
+}
