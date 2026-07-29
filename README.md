@@ -52,11 +52,14 @@ apply with `npm run db:deploy`. `npm run db:reset` will wipe all data.
 `Cannot find module './948.js'`. Stop the dev server first, or delete `.next`
 and restart afterwards.
 
-**OneDrive.** This repository currently lives inside a OneDrive folder. Cloud
-placeholder files break Next's recursive delete with
-`EINVAL: invalid argument, readlink '.next/types/package.json'`. If that
-happens, delete `.next` manually. Moving the repository outside OneDrive avoids
-the problem entirely and makes development noticeably faster.
+**Keep this repository out of OneDrive.** It lives at
+`C:\Users\buruf\Documents\gtasearch`, which is deliberately *not* the
+OneDrive-redirected Documents folder (Windows repoints `Documents` at
+`C:\Users\buruf\OneDrive\Documents`). `node_modules` and `.next` are tens of
+thousands of constantly churning files; syncing them is slow and turns build
+artifacts into cloud placeholders, which breaks Next's recursive delete with
+`EINVAL: invalid argument, readlink '.next/types/package.json'`. If you ever hit
+that, delete `.next` manually. Back this project up with git, not file sync.
 
 ## Architecture notes
 
