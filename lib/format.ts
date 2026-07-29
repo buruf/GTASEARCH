@@ -17,23 +17,33 @@ const CAD_WITH_CENTS = new Intl.NumberFormat("en-CA", {
 export type PriceType = "fixed" | "free" | "contact" | "trade";
 
 /**
- * Renders the price for display. Prices arrive from Prisma as Decimal, which
- * serialises to string — never coerce with Number() without care, but listing
- * prices are well within safe integer range so it is fine here.
+ * Anything a price can arrive as. Prisma's query builder returns Decimal
+ * instances and $queryRaw returns them too, so this must not assume a
+ * primitive — an earlier version checked `typeof price === "string"` and
+ * silently rendered every real price as "Please contact".
+ */
+export type PriceInput =
+  | string
+  | number
+  | { toString(): string }
+  | null
+  | undefined;
+
+/**
+ * Renders the price for display.
  *
  * Whole-dollar amounts drop the cents, since virtually every classified price
  * is round and "$850" reads better than "$850.00".
  */
-export function formatPrice(
-  price: string | number | null | undefined,
-  priceType: string,
-): string {
+export function formatPrice(price: PriceInput, priceType: string): string {
   if (priceType === "free") return "Free";
   if (priceType === "contact") return "Please contact";
   if (priceType === "trade") return "Trade";
   if (price === null || price === undefined) return "Please contact";
 
-  const n = typeof price === "string" ? parseFloat(price) : price;
+  // String() handles primitives and Decimal alike; Decimal.toString() yields a
+  // plain numeric string.
+  const n = typeof price === "number" ? price : Number(String(price));
   if (!Number.isFinite(n)) return "Please contact";
 
   return Number.isInteger(n) ? CAD.format(n) : CAD_WITH_CENTS.format(n);

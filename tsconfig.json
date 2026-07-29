@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    // ES5 (the old create-next-app default) rejects iterating Array.entries()
+    // without --downlevelIteration. Every browser Next 14 supports handles
+    // ES2017 natively.
+    "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

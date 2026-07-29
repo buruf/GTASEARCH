@@ -809,7 +809,7 @@ async function main() {
   await db.user.deleteMany();
 
   console.log(`Creating ${USERS.length} users...`);
-  const users = [];
+  const users: { id: string }[] = [];
   for (const [i, u] of USERS.entries()) {
     users.push(
       await db.user.create({

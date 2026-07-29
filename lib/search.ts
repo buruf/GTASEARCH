@@ -316,12 +316,16 @@ export async function searchListings(f: SearchFilters): Promise<SearchResult> {
   return { rows: ftsRows, total, usedFallback: false };
 }
 
-/** Homepage: most recent active listings, boosted first. */
+/**
+ * Homepage "Recently posted": strictly newest first, with no boost weighting.
+ * Boost ordering belongs in search results; applying it here would just repeat
+ * the featured strip directly underneath itself, which is what it did before.
+ */
 export async function recentListings(limit = 12): Promise<ListingRow[]> {
   return db.$queryRaw<ListingRow[]>`
     SELECT ${SELECT_COLUMNS} FROM "Listing"
     WHERE ${VISIBLE}
-    ORDER BY ${EFFECTIVE_BOOST}, "createdAt" DESC
+    ORDER BY "createdAt" DESC
     LIMIT ${limit}
   `;
 }

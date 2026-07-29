@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Prisma } from "@prisma/client";
 import { formatPrice, formatRelativeTime } from "@/lib/format";
 
 describe("formatPrice", () => {
@@ -11,8 +12,19 @@ describe("formatPrice", () => {
     expect(formatPrice(4.99, "fixed")).toBe("$4.99");
   });
 
-  it("accepts Decimal values arriving from Prisma as strings", () => {
+  it("accepts numeric strings", () => {
     expect(formatPrice("2950", "fixed")).toBe("$2,950");
+  });
+
+  // Regression: Prisma returns price as a Decimal instance, not a primitive.
+  // An earlier version type-checked for string and rendered every real price
+  // on the site as "Please contact".
+  it("accepts a Prisma Decimal instance", () => {
+    expect(formatPrice(new Prisma.Decimal(2950), "fixed")).toBe("$2,950");
+    expect(formatPrice(new Prisma.Decimal("1249000.00"), "fixed")).toBe(
+      "$1,249,000",
+    );
+    expect(formatPrice(new Prisma.Decimal("4.99"), "fixed")).toBe("$4.99");
   });
 
   it("renders non-fixed price types as words, ignoring any price", () => {
