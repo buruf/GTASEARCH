@@ -131,8 +131,34 @@ in a hand-written migration, together with `CREATE EXTENSION IF NOT EXISTS pg_tr
 
 `lib/search.ts` exposes a single function that accepts parsed filters and returns
 `{ rows, total }`. It executes the `tsvector` query first. If that returns fewer than five
-rows, it re-runs using trigram similarity against `title`. Filters, sort order, and
+rows, it re-runs using trigram matching against `title`. Filters, sort order, and
 pagination are identical on both paths, so the fallback is invisible to the caller.
+
+#### Trigram operator and threshold (measured, not assumed)
+
+The fallback must use **`word_similarity()` / the `<%` operator**, not `similarity()` /
+`%`. `similarity()` compares whole strings, so a short query scored against a long title
+is diluted below any usable threshold. Measured against representative seed titles:
+
+| Query | Intent | `similarity()` | `word_similarity()` |
+|---|---|---|---|
+| `sofa` | exact word | 0.179 | 1.000 |
+| `sofsa` | transposition | 0.097 | 0.500 |
+| `dreser` | dropped letter | 0.194 | 0.667 |
+| `iphonne` | doubled letter | 0.194 | 0.667 |
+| `honda civc` | dropped letter, two words | 0.290 | 0.818 |
+| `couch` | synonym — must NOT match | 0.029 | 0.167 |
+
+Under `similarity()` every true match falls below the 0.3 default threshold, and
+`honda civc` (0.290) outranks an exact `sofa` match (0.179) purely because its title is
+shorter. That approach cannot work.
+
+`word_similarity()` separates true matches (0.500–1.000) from the true negative (0.167)
+cleanly, but its default threshold of **0.6 is too strict** — it would reject the `sofsa`
+transposition at 0.500. Phase 1 therefore sets
+`pg_trgm.word_similarity_threshold = 0.45`, which sits inside the empty band between
+0.167 and 0.500. The setting is applied with `SET LOCAL` inside the same transaction as
+the fallback query, so it never leaks into other connections in the pool.
 
 Raw SQL is confined to `lib/search.ts`. Every other query in the codebase uses the Prisma
 query builder.
