@@ -8,6 +8,7 @@ import {
   getOrCreateConversation, sendMessage,
   OwnListingError, ListingUnavailableError, ModerationError, NotParticipantError,
 } from "@/lib/messages";
+import { violatesModeration } from "@/lib/moderation";
 import { MessageSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
 import { truncateSnippet } from "@/lib/format";
@@ -67,6 +68,12 @@ export async function startConversationAction(_prev: FormState, formData: FormDa
     return { ok: false, error: "You've started a lot of conversations today. Try again tomorrow." };
   }
   if (!rateLimit(`msg:${userId}`, 30, 60 * 60 * 1000)) return { ok: false, error: GENERIC.limit };
+
+  // Validate content BEFORE creating the conversation: otherwise a
+  // moderation-rejected first message leaves a ghost conversation with no
+  // messages sitting in both inboxes. deliver()'s own moderation check stays
+  // as a harmless double-check.
+  if (violatesModeration(parsed.data.content)) return { ok: false, error: GENERIC.moderation };
 
   let conversationId: string;
   try {

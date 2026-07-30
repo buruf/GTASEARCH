@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +8,20 @@ import { formatRelativeTime } from "@/lib/format";
 import { ReplyForm } from "./ReplyForm";
 
 export const metadata: Metadata = { title: "Conversation", robots: { index: false } };
+
+/** "Today" / "Yesterday" / a formatted date (year included only when not the
+ *  current year), for the day separators between messages sent on different
+ *  calendar days. */
+function dayLabel(date: Date): string {
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  const opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
+  if (date.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  return new Intl.DateTimeFormat("en-CA", opts).format(date);
+}
 
 export default async function ThreadPage({ params }: { params: { conversationId: string } }) {
   const userId = await requireUserId();
@@ -38,17 +53,28 @@ export default async function ThreadPage({ params }: { params: { conversationId:
       )}
 
       <ul className="mt-4 space-y-2">
-        {thread.messages.map((m) => {
+        {thread.messages.map((m, i) => {
           const mine = m.senderId === userId;
+          const prev = thread.messages[i - 1];
+          const showSeparator = !prev || prev.createdAt.toDateString() !== m.createdAt.toDateString();
           return (
-            <li key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-              <div className={`max-w-[80%] rounded-card px-3 py-2 ${mine ? "bg-brand text-white" : "bg-surface-alt text-ink"}`}>
-                <p className="whitespace-pre-line break-words text-sm">{m.content}</p>
-                <time className={`mt-1 block text-right text-[11px] ${mine ? "text-white/70" : "text-ink-faint"}`}>
-                  {formatRelativeTime(m.createdAt)}
-                </time>
-              </div>
-            </li>
+            <Fragment key={m.id}>
+              {showSeparator && (
+                <li className="flex justify-center">
+                  <span className="rounded-full bg-surface-alt px-3 py-0.5 text-xs text-ink-muted">
+                    {dayLabel(m.createdAt)}
+                  </span>
+                </li>
+              )}
+              <li className={mine ? "flex justify-end" : "flex justify-start"}>
+                <div className={`max-w-[80%] rounded-card px-3 py-2 ${mine ? "bg-brand text-white" : "bg-surface-alt text-ink"}`}>
+                  <p className="whitespace-pre-line break-words text-sm">{m.content}</p>
+                  <time className={`mt-1 block text-right text-[11px] ${mine ? "text-white/70" : "text-ink-faint"}`}>
+                    {formatRelativeTime(m.createdAt)}
+                  </time>
+                </div>
+              </li>
+            </Fragment>
           );
         })}
       </ul>

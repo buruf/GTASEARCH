@@ -7,7 +7,14 @@ export async function toggleSaved(
   const key = { userId_listingId: { userId, listingId } };
   const existing = await db.savedListing.findUnique({ where: key });
   if (existing) {
-    await db.savedListing.delete({ where: key });
+    try {
+      await db.savedListing.delete({ where: key });
+    } catch (e) {
+      // P2025: another request already deleted this row between our
+      // findUnique and this delete. Already unsaved — not an error.
+      if ((e as { code?: string }).code === "P2025") return { saved: false };
+      throw e;
+    }
     return { saved: false };
   }
   try {
