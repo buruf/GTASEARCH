@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { formatPrice, formatRelativeTime } from "@/lib/format";
+import { formatPrice, formatRelativeTime, truncateSnippet, formatUnreadCount } from "@/lib/format";
 
 describe("formatPrice", () => {
   it("formats whole dollars in CAD without cents", () => {
@@ -61,4 +61,24 @@ describe("formatRelativeTime", () => {
   it("singularises correctly", () => {
     expect(formatRelativeTime(ago(86400_000))).toBe("1 day ago");
   });
+});
+
+describe("truncateSnippet", () => {
+  it("passes short text through unchanged", () => {
+    expect(truncateSnippet("Is this available?")).toBe("Is this available?");
+  });
+  it("collapses newlines to spaces", () => {
+    expect(truncateSnippet("line one\nline two")).toBe("line one line two");
+  });
+  it("truncates at the limit with an ellipsis", () => {
+    const out = truncateSnippet("a".repeat(200), 120);
+    expect(out.length).toBe(121); // 120 + ellipsis char
+    expect(out.endsWith("…")).toBe(true);
+  });
+});
+
+describe("formatUnreadCount", () => {
+  it("returns null for zero", () => expect(formatUnreadCount(0)).toBeNull());
+  it("passes small counts through", () => expect(formatUnreadCount(4)).toBe("4"));
+  it("caps at 9+", () => expect(formatUnreadCount(23)).toBe("9+"));
 });

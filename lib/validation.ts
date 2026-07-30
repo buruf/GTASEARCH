@@ -92,3 +92,27 @@ export const ProfileSchema = z.object({
     .default("")
     .refine((s) => s === "" || /^[\d\s()+-]{7,20}$/.test(s), "Enter a valid phone number"),
 });
+
+export const MessageSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Write a message first")
+    .max(2000, "Messages are limited to 2000 characters"),
+});
+
+/** Slug → label shown as radio options on the report form. */
+export const REPORT_REASONS: Record<string, string> = {
+  prohibited: "Prohibited item",
+  scam: "Scam or fraud",
+  "wrong-category": "Wrong category",
+  offensive: "Offensive content",
+  other: "Other",
+};
+
+export const ReportSchema = z.object({
+  reason: z
+    .string()
+    .refine((r) => r in REPORT_REASONS, "Pick a reason"),
+  details: z.string().trim().max(500, "Keep details under 500 characters").optional().default(""),
+});

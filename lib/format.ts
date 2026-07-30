@@ -98,3 +98,15 @@ export function formatCount(n: number, singular: string, plural?: string) {
   const word = n === 1 ? singular : (plural ?? `${singular}s`);
   return `${n.toLocaleString("en-CA")} ${word}`;
 }
+
+/** One-line preview of a message for inboxes and alert emails. */
+export function truncateSnippet(text: string, max = 120): string {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  return oneLine.length <= max ? oneLine : `${oneLine.slice(0, max)}…`;
+}
+
+/** Unread badge text: null when nothing unread, capped display above 9. */
+export function formatUnreadCount(n: number): string | null {
+  if (n <= 0) return null;
+  return n > 9 ? "9+" : String(n);
+}

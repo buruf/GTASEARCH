@@ -20,3 +20,8 @@ export function cloudinaryConfig(): { cloudName: string; uploadPreset: string } 
 export function appUrl(): string {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3020";
 }
+
+/** Destination for report notifications; null disables them (degraded mode). */
+export function adminEmail(): string | null {
+  return process.env.ADMIN_EMAIL || null;
+}
