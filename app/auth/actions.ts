@@ -4,9 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { RegisterSchema } from "@/lib/validation";
-import { createUser, hashPassword } from "@/lib/users";
+import { createUser, hashPassword, verifyPassword } from "@/lib/users";
 import { rateLimit } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
+import { DUMMY_HASH } from "@/lib/auth";
 import { createResetToken, consumeResetToken, invalidateResetTokens } from "@/lib/tokens";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { resendEnabled, appUrl } from "@/lib/env";
@@ -49,6 +50,10 @@ export async function forgotAction(_prev: FormState, formData: FormData): Promis
   if (user) {
     const raw = await createResetToken(user.id);
     await sendPasswordResetEmail(user.email, `${appUrl()}/auth/reset/${raw}`);
+  } else {
+    // Dummy work so the response time does not reveal whether the account
+    // exists. See comment on DUMMY_HASH in lib/auth.ts.
+    await verifyPassword("timing-equalization", DUMMY_HASH);
   }
   // Identical response whether or not the account exists.
   return { ok: true };

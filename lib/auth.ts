@@ -16,7 +16,7 @@ import { rateLimit } from "@/lib/rate-limit";
 // ~cost-12 bcrypt compare — an attacker can time responses to enumerate which
 // emails have accounts. This hash never matches any real password; its only
 // purpose is to burn the same wall-clock time.
-const DUMMY_HASH = "$2b$12$WF4VoD0QelE.xgzlJAYka.OlHZw2lDQ9Mcss.M13WpoDJhpzAoUtS";
+export const DUMMY_HASH = "$2b$12$WF4VoD0QelE.xgzlJAYka.OlHZw2lDQ9Mcss.M13WpoDJhpzAoUtS";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
