@@ -36,7 +36,7 @@ export default async function SavedPage() {
                   {BADGE[r.displayStatus].label}
                 </span>
               )}
-              <ListingCard listing={r} saved={true} returnTo="/saved" />
+              <ListingCard listing={r} saved={true} />
             </li>
           ))}
         </ul>

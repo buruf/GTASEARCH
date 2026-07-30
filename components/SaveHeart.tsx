@@ -4,8 +4,8 @@ import { useOptimistic } from "react";
 import { toggleSavedAction } from "@/app/saved/actions";
 
 export function SaveHeart({
-  listingId, saved, returnTo, variant = "card",
-}: { listingId: string; saved: boolean; returnTo: string; variant?: "card" | "full" }) {
+  listingId, saved, variant = "card",
+}: { listingId: string; saved: boolean; variant?: "card" | "full" }) {
   const [optimistic, flip] = useOptimistic(saved, (s) => !s);
 
   const heart = (
@@ -19,7 +19,6 @@ export function SaveHeart({
   return (
     <form action={async (fd) => { flip(saved); await toggleSavedAction(fd); }}>
       <input type="hidden" name="listingId" value={listingId} />
-      <input type="hidden" name="returnTo" value={returnTo} />
       {variant === "card" ? (
         <button type="submit" aria-label={optimistic ? "Remove from favourites" : "Save to favourites"}
           className="rounded-full bg-white/90 p-1.5 text-ink-muted shadow-sm hover:text-brand">

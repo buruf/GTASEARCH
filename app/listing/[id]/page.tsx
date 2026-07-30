@@ -205,7 +205,7 @@ export default async function ListingPage({
                 </Link>
               ) : null}
               {viewerId ? (
-                <SaveHeart listingId={listing.id} saved={isSaved} returnTo={`/listing/${listing.id}`} variant="full" />
+                <SaveHeart listingId={listing.id} saved={isSaved} variant="full" />
               ) : (
                 <Link
                   href={`/auth/signin?callbackUrl=${encodeURIComponent(`/listing/${listing.id}`)}`}

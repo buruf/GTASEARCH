@@ -11,10 +11,9 @@ interface Props {
   priority?: boolean;
   /** Undefined hides the heart entirely (signed-out visitors). */
   saved?: boolean;
-  returnTo?: string;
 }
 
-export function ListingCard({ listing, priority = false, saved, returnTo }: Props) {
+export function ListingCard({ listing, priority = false, saved }: Props) {
   // effectiveBoost: 0 super, 1 featured, 2 top, 3 none/lapsed. Uses the
   // computed rank, not boostLevel, so a lapsed boost shows no badge.
   const isFeatured = listing.effectiveBoost <= 1;
@@ -48,18 +47,6 @@ export function ListingCard({ listing, priority = false, saved, returnTo }: Prop
               Featured
             </span>
           )}
-
-          {saved !== undefined && (
-            // stopPropagation: the card's whole surface is the <Link> below,
-            // so without this a heart click also bubbles into the anchor's
-            // onClick and navigates to the listing instead of saving it.
-            <div
-              className="absolute right-2 top-2 z-10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SaveHeart listingId={listing.id} saved={saved} returnTo={returnTo ?? "/"} variant="card" />
-            </div>
-          )}
         </div>
 
         <div className="p-3">
@@ -80,6 +67,19 @@ export function ListingCard({ listing, priority = false, saved, returnTo }: Prop
           </p>
         </div>
       </Link>
+
+      {saved !== undefined && (
+        // Sibling of the Link, not a descendant: an <a> containing a <form>
+        // with a submit <button> is both invalid HTML and, even with
+        // stopPropagation, still lets the browser's native anchor activation
+        // navigate on click. Positioned on top of the image visually via
+        // absolute + the article's own `relative`, but outside the anchor in
+        // the DOM so clicks land only on the heart's own button. Tab order
+        // also becomes link -> heart, which is the right a11y order.
+        <div className="absolute right-2 top-2 z-10">
+          <SaveHeart listingId={listing.id} saved={saved} variant="card" />
+        </div>
+      )}
     </article>
   );
 }
@@ -88,12 +88,10 @@ export function ListingGrid({
   listings,
   priorityCount = 4,
   savedIds,
-  returnTo,
 }: {
   listings: ListingRow[];
   priorityCount?: number;
   savedIds?: string[];
-  returnTo?: string;
 }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-4">
@@ -103,7 +101,6 @@ export function ListingGrid({
             listing={l}
             priority={i < priorityCount}
             saved={savedIds ? savedIds.includes(l.id) : undefined}
-            returnTo={returnTo}
           />
         </li>
       ))}

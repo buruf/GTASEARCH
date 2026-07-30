@@ -84,7 +84,7 @@ export default async function SearchPage({
           ) : (
             <>
               <div className="mt-5">
-                <ListingGrid listings={rows} priorityCount={4} savedIds={savedIds} returnTo="/search" />
+                <ListingGrid listings={rows} priorityCount={4} savedIds={savedIds} />
               </div>
               <Pagination filters={filters} totalPages={totalPages} />
             </>

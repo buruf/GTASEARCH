@@ -71,7 +71,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="mt-4">
-              <ListingGrid listings={featured} priorityCount={4} savedIds={savedIds} returnTo="/" />
+              <ListingGrid listings={featured} priorityCount={4} savedIds={savedIds} />
             </div>
           </section>
         )}
@@ -92,7 +92,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="mt-4">
-            <ListingGrid listings={recent} priorityCount={0} savedIds={savedIds} returnTo="/" />
+            <ListingGrid listings={recent} priorityCount={0} savedIds={savedIds} />
           </div>
         </section>
       </div>
