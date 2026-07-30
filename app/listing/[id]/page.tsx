@@ -200,9 +200,6 @@ export default async function ListingPage({
                 ♥ Save to favourites
               </button>
             </div>
-            <p className="mt-3 text-xs text-ink-faint">
-              Contacting sellers goes live with accounts, shortly.
-            </p>
           </div>
 
           <p className="mt-4 px-1 text-xs text-ink-faint">

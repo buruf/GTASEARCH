@@ -25,8 +25,12 @@ async function deliver(senderId: string, conversationId: string, content: string
   try {
     const r = await sendMessage(senderId, conversationId, content);
     if (r.shouldNotify) {
-      // Fire-and-forget: an email failure must never fail the send.
-      void (async () => {
+      // Awaited, not fire-and-forget: on serverless (Vercel) the invocation
+      // can be frozen the instant the response is sent, killing any
+      // un-awaited work before it completes. sendMessageAlertEmail already
+      // returns boolean and never throws; this try/catch is belt-and-braces
+      // for the db lookups — an email failure must never fail the send.
+      try {
         const [recipient, sender, convo] = await Promise.all([
           db.user.findUnique({ where: { id: r.recipientId }, select: { email: true } }),
           db.user.findUnique({ where: { id: senderId }, select: { name: true } }),
@@ -40,7 +44,9 @@ async function deliver(senderId: string, conversationId: string, content: string
             threadUrl: `${appUrl()}/messages/${conversationId}`,
           });
         }
-      })().catch(() => {});
+      } catch {
+        /* email must never fail the send */
+      }
     }
     return null;
   } catch (e) {
