@@ -113,6 +113,6 @@ export const REPORT_REASONS: Record<string, string> = {
 export const ReportSchema = z.object({
   reason: z
     .string()
-    .refine((r) => r in REPORT_REASONS, "Pick a reason"),
+    .refine((r) => Object.hasOwn(REPORT_REASONS, r), "Pick a reason"),
   details: z.string().trim().max(500, "Keep details under 500 characters").optional().default(""),
 });

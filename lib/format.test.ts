@@ -81,4 +81,6 @@ describe("formatUnreadCount", () => {
   it("returns null for zero", () => expect(formatUnreadCount(0)).toBeNull());
   it("passes small counts through", () => expect(formatUnreadCount(4)).toBe("4"));
   it("caps at 9+", () => expect(formatUnreadCount(23)).toBe("9+"));
+  it("passes 9 through as 9", () => expect(formatUnreadCount(9)).toBe("9"));
+  it("caps 10 and above as 9+", () => expect(formatUnreadCount(10)).toBe("9+"));
 });

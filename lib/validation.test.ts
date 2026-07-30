@@ -78,6 +78,13 @@ describe("MessageSchema", () => {
   it("rejects content over 2000 chars", () => {
     expect(MessageSchema.safeParse({ content: "x".repeat(2001) }).success).toBe(false);
   });
+  it("accepts content of exactly 2000 chars", () => {
+    const result = MessageSchema.safeParse({ content: "x".repeat(2000) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content.length).toBe(2000);
+    }
+  });
 });
 
 describe("ReportSchema", () => {
@@ -91,5 +98,16 @@ describe("ReportSchema", () => {
   });
   it("rejects details over 500 chars", () => {
     expect(ReportSchema.safeParse({ reason: "other", details: "x".repeat(501) }).success).toBe(false);
+  });
+  it("accepts details of exactly 500 chars", () => {
+    const result = ReportSchema.safeParse({ reason: "other", details: "x".repeat(500) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.details.length).toBe(500);
+    }
+  });
+  it("rejects prototype chain methods like constructor and toString", () => {
+    expect(ReportSchema.safeParse({ reason: "constructor", details: "" }).success).toBe(false);
+    expect(ReportSchema.safeParse({ reason: "toString", details: "" }).success).toBe(false);
   });
 });
