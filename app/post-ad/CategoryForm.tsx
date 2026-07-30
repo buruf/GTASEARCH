@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormState } from "react-dom";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { SubmitButton } from "@/components/wizard/SubmitButton";
 import { saveCategory } from "./actions";
 import type { FormState } from "@/app/auth/actions";
 
@@ -16,13 +17,6 @@ interface Category {
   label: string;
   icon: string;
   subcategories: Subcategory[];
-}
-
-const button = "mt-5 h-11 w-full rounded-btn bg-brand text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
-
-function Submit() {
-  const { pending } = useFormStatus();
-  return <button type="submit" disabled={pending} className={button}>{pending ? "Please wait…" : "Continue"}</button>;
 }
 
 export function CategoryForm({
@@ -49,7 +43,7 @@ export function CategoryForm({
               onChange={() => setSelected(c.slug)}
               className="peer sr-only"
             />
-            <div className="flex flex-col items-center gap-1.5 rounded-card border border-line px-2 py-3 text-center text-xs font-medium text-ink-muted peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand peer-checked:text-brand">
+            <div className="flex flex-col items-center gap-1.5 rounded-card border border-line px-2 py-3 text-center text-xs font-medium text-ink-muted peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2">
               <CategoryIcon name={c.icon} className="h-6 w-6" />
               {c.label}
             </div>
@@ -79,7 +73,7 @@ export function CategoryForm({
 
       {state.error && <p role="alert" className="mt-3 text-sm text-red-600">{state.error}</p>}
 
-      <Submit />
+      <SubmitButton>Continue</SubmitButton>
     </form>
   );
 }

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { requireUserId } from "@/lib/auth";
 import { getDraft, firstIncompleteStep } from "@/lib/draft";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, getCategoryLabel } from "@/lib/categories";
 import { StepShell } from "@/components/wizard/StepShell";
 import { CategoryForm } from "./CategoryForm";
 import { discardAndRestart } from "./actions";
-import { getCategoryLabel } from "@/lib/categories";
 
 export const metadata: Metadata = { title: "Post an ad", robots: { index: false } };
 

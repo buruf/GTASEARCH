@@ -1,5 +1,7 @@
 // Shared by /post-ad/details and /listing/[id]/edit — one source of truth for
 // the details form fields (spec §6).
+import { FieldError } from "./FieldError";
+
 export function DetailsFields({
   defaults, fieldErrors = {},
 }: {
@@ -7,19 +9,17 @@ export function DetailsFields({
   fieldErrors?: Record<string, string>;
 }) {
   const input = "mt-1 h-11 w-full rounded-btn border border-line px-3 text-sm focus:border-brand";
-  const err = (k: string) => fieldErrors[k]
-    ? <p role="alert" className="mt-1 text-sm text-red-600">{fieldErrors[k]}</p> : null;
 
   return (
     <>
       <label className="mt-3 block text-sm font-medium text-ink" htmlFor="title">Title</label>
       <input id="title" name="title" required maxLength={80} defaultValue={defaults.title} className={input} />
-      {err("title")}
+      <FieldError message={fieldErrors["title"]} />
 
       <label className="mt-3 block text-sm font-medium text-ink" htmlFor="description">Description</label>
       <textarea id="description" name="description" required minLength={20} maxLength={2000} rows={6}
         defaultValue={defaults.description} className="mt-1 w-full rounded-btn border border-line p-3 text-sm focus:border-brand" />
-      {err("description")}
+      <FieldError message={fieldErrors["description"]} />
 
       <fieldset className="mt-3">
         <legend className="text-sm font-medium text-ink">Price</legend>
@@ -33,7 +33,7 @@ export function DetailsFields({
         </div>
         <input name="price" type="number" inputMode="decimal" min="0" max="9999999" step="0.01"
           placeholder="$ amount" defaultValue={defaults.price} className={`${input} max-w-48`} />
-        {err("price")}
+        <FieldError message={fieldErrors["price"]} />
       </fieldset>
     </>
   );
