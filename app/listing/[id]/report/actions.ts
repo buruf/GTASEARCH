@@ -32,12 +32,21 @@ export async function submitReportAction(_prev: FormState, formData: FormData): 
   if (!duplicate) {
     const to = adminEmail();
     if (to) {
-      void sendReportEmail(to, {
-        listingId,
-        listingTitle: listing.title,
-        reason: REPORT_REASONS[parsed.data.reason] ?? parsed.data.reason,
-        details: parsed.data.details,
-      }).catch(() => {});
+      // Awaited, not fire-and-forget: on serverless (Vercel) the invocation
+      // can be frozen the instant the response is sent, killing any
+      // un-awaited work before it completes (see deliver() in
+      // app/messages/actions.ts for the same pattern). The try/catch is
+      // belt-and-braces — an email failure must never fail the report.
+      try {
+        await sendReportEmail(to, {
+          listingId,
+          listingTitle: listing.title,
+          reason: REPORT_REASONS[parsed.data.reason] ?? parsed.data.reason,
+          details: parsed.data.details,
+        });
+      } catch {
+        /* email must never fail the report */
+      }
     }
   }
   // Duplicate and fresh both land on the same thank-you: nothing to probe.
