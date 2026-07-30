@@ -3,17 +3,25 @@ import { SearchBar } from "@/components/SearchBar";
 import { CategoryGrid } from "@/components/CategoryGrid";
 import { ListingGrid } from "@/components/ListingCard";
 import { categoryCounts, featuredListings, recentListings } from "@/lib/search";
+import { currentUserId } from "@/lib/auth";
+import { savedIdsFor } from "@/lib/saved";
 
 // Listings change often enough that a stale homepage looks broken, but not so
 // often that every visitor needs a fresh query.
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [counts, featured, recent] = await Promise.all([
+  const [counts, featured, recent, viewerId] = await Promise.all([
     categoryCounts(),
     featuredListings(6),
     recentListings(12),
+    currentUserId(),
   ]);
+  // Signed-out visitors get no hearts (undefined savedIds) — the detail page
+  // is their entry point to favouriting.
+  const savedIds = viewerId
+    ? await savedIdsFor(viewerId, [...featured, ...recent].map((l) => l.id))
+    : undefined;
 
   return (
     <>
@@ -63,7 +71,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="mt-4">
-              <ListingGrid listings={featured} priorityCount={4} />
+              <ListingGrid listings={featured} priorityCount={4} savedIds={savedIds} returnTo="/" />
             </div>
           </section>
         )}
@@ -84,7 +92,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="mt-4">
-            <ListingGrid listings={recent} priorityCount={0} />
+            <ListingGrid listings={recent} priorityCount={0} savedIds={savedIds} returnTo="/" />
           </div>
         </section>
       </div>

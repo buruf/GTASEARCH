@@ -3,14 +3,18 @@ import Link from "next/link";
 import type { ListingRow } from "@/lib/search";
 import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { getCityLabel } from "@/lib/cities";
+import { SaveHeart } from "@/components/SaveHeart";
 
 interface Props {
   listing: ListingRow;
   /** Renders the first few cards eagerly so the LCP image is not lazy-loaded. */
   priority?: boolean;
+  /** Undefined hides the heart entirely (signed-out visitors). */
+  saved?: boolean;
+  returnTo?: string;
 }
 
-export function ListingCard({ listing, priority = false }: Props) {
+export function ListingCard({ listing, priority = false, saved, returnTo }: Props) {
   // effectiveBoost: 0 super, 1 featured, 2 top, 3 none/lapsed. Uses the
   // computed rank, not boostLevel, so a lapsed boost shows no badge.
   const isFeatured = listing.effectiveBoost <= 1;
@@ -44,6 +48,18 @@ export function ListingCard({ listing, priority = false }: Props) {
               Featured
             </span>
           )}
+
+          {saved !== undefined && (
+            // stopPropagation: the card's whole surface is the <Link> below,
+            // so without this a heart click also bubbles into the anchor's
+            // onClick and navigates to the listing instead of saving it.
+            <div
+              className="absolute right-2 top-2 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SaveHeart listingId={listing.id} saved={saved} returnTo={returnTo ?? "/"} variant="card" />
+            </div>
+          )}
         </div>
 
         <div className="p-3">
@@ -71,15 +87,24 @@ export function ListingCard({ listing, priority = false }: Props) {
 export function ListingGrid({
   listings,
   priorityCount = 4,
+  savedIds,
+  returnTo,
 }: {
   listings: ListingRow[];
   priorityCount?: number;
+  savedIds?: string[];
+  returnTo?: string;
 }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-4">
       {listings.map((l, i) => (
         <li key={l.id}>
-          <ListingCard listing={l} priority={i < priorityCount} />
+          <ListingCard
+            listing={l}
+            priority={i < priorityCount}
+            saved={savedIds ? savedIds.includes(l.id) : undefined}
+            returnTo={returnTo}
+          />
         </li>
       ))}
     </ul>

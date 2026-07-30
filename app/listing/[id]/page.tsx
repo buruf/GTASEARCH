@@ -6,8 +6,10 @@ import { ShareButtons } from "@/components/ShareButtons";
 import { ViewCounter } from "@/components/ViewCounter";
 import { ListingGrid } from "@/components/ListingCard";
 import { PhoneReveal } from "@/components/PhoneReveal";
+import { SaveHeart } from "@/components/SaveHeart";
 import { currentUserId } from "@/lib/auth";
 import { getPublicListing } from "@/lib/listing";
+import { savedIdsFor } from "@/lib/saved";
 import { similarListings } from "@/lib/search";
 import { getCategoryLabel, getSubcategoryLabel } from "@/lib/categories";
 import { getCityLabel } from "@/lib/cities";
@@ -55,6 +57,9 @@ export default async function ListingPage({
   if (!listing) notFound();
 
   const viewerId = await currentUserId();
+  const isSaved = viewerId
+    ? (await savedIdsFor(viewerId, [listing.id])).length > 0
+    : false;
 
   const similar = await similarListings(
     listing.id,
@@ -68,9 +73,6 @@ export default async function ListingPage({
     listing.subcategory,
   );
   const url = `https://gtasearch.com/listing/${listing.id}`;
-
-  const disabledBtn =
-    "w-full cursor-not-allowed rounded-btn border border-line bg-surface-alt px-4 py-2.5 text-sm font-semibold text-ink-faint";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -202,9 +204,16 @@ export default async function ListingPage({
                   Show phone number
                 </Link>
               ) : null}
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                ♥ Save to favourites
-              </button>
+              {viewerId ? (
+                <SaveHeart listingId={listing.id} saved={isSaved} returnTo={`/listing/${listing.id}`} variant="full" />
+              ) : (
+                <Link
+                  href={`/auth/signin?callbackUrl=${encodeURIComponent(`/listing/${listing.id}`)}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-btn border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:border-brand hover:text-brand"
+                >
+                  ♥ Save to favourites
+                </Link>
+              )}
             </div>
           </div>
 
