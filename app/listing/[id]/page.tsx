@@ -5,6 +5,7 @@ import { ImageGallery } from "@/components/ImageGallery";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ViewCounter } from "@/components/ViewCounter";
 import { ListingGrid } from "@/components/ListingCard";
+import { PhoneReveal } from "@/components/PhoneReveal";
 import { currentUserId } from "@/lib/auth";
 import { getPublicListing } from "@/lib/listing";
 import { similarListings } from "@/lib/search";
@@ -191,11 +192,16 @@ export default async function ListingPage({
                   Message seller
                 </Link>
               )}
-              {/* Deliberately inert until later tasks wire phone reveal and
-                  favourites. Shown so the layout is final, but unmistakably inactive. */}
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                Show phone number
-              </button>
+              {viewerId && listing.hasPhone ? (
+                <PhoneReveal listingId={listing.id} />
+              ) : !viewerId && listing.hasPhone ? (
+                <Link
+                  href={`/auth/signin?callbackUrl=${encodeURIComponent(`/listing/${listing.id}`)}`}
+                  className="block w-full rounded-btn border border-brand px-4 py-2.5 text-center text-sm font-semibold text-brand hover:bg-brand-50"
+                >
+                  Show phone number
+                </Link>
+              ) : null}
               <button type="button" className={disabledBtn} disabled title="Coming soon">
                 ♥ Save to favourites
               </button>

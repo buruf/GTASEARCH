@@ -53,6 +53,8 @@ export async function getPublicListing(id: string) {
 
   return {
     ...listing,
+    user: { id: listing.user.id, name: listing.user.name, createdAt: listing.user.createdAt },
+    hasPhone: Boolean(listing.user.phone),
     activeAds,
     /** True only when the boost has not lapsed — never trust boostLevel alone. */
     isFeatured: boostLive && ["super", "featured"].includes(listing.boostLevel),
