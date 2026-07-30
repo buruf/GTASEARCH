@@ -90,4 +90,13 @@ describe("listing lifecycle mutations", () => {
     const { getPublicListing } = await import("@/lib/listing");
     expect(await getPublicListing(listingId)).toBeNull();
   });
+
+  it("a draft cannot be published through markSold/relist (moderation bypass guard)", async () => {
+    const draft = await getOrCreateDraft(userId);
+    await expect(markSold(userId, draft.id)).rejects.toThrow(NotOwnerError);
+    await expect(relistListing(userId, draft.id)).rejects.toThrow(NotOwnerError);
+    const row = await db.listing.findUnique({ where: { id: draft.id } });
+    expect(row!.status).toBe("draft");
+    await db.listing.delete({ where: { id: draft.id } });
+  });
 });

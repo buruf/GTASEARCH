@@ -23,7 +23,7 @@ export function Footer() {
               <li><Link href="/coming-soon" className="hover:text-brand">Contact</Link></li>
               <li><Link href="/coming-soon" className="hover:text-brand">Terms</Link></li>
               <li><Link href="/coming-soon" className="hover:text-brand">Privacy</Link></li>
-              <li><Link href="/coming-soon" className="hover:text-brand">Post Ad</Link></li>
+              <li><Link href="/post-ad" className="hover:text-brand">Post Ad</Link></li>
             </ul>
           </div>
 

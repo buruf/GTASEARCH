@@ -80,8 +80,3 @@ export async function requireUserId(): Promise<string> {
   if (!session?.user?.id) redirect("/auth/signin");
   return session.user.id;
 }
-
-export async function currentUserId(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  return session?.user?.id ?? null;
-}
