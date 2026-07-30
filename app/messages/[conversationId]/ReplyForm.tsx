@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { replyAction } from "@/app/messages/actions";
 import type { FormState } from "@/app/auth/actions";
@@ -19,6 +19,14 @@ export function ReplyForm({ conversationId }: { conversationId: string }) {
   const [state, formAction] = useFormState<FormState, FormData>(replyAction, { ok: false });
   const ref = useRef<HTMLFormElement>(null);
 
+  // replyAction no longer redirects (it stays on this same route), so on
+  // success clear the textarea instead of relying on a navigation to reset it.
+  // `state` is also briefly undefined mid-transition, so every read below is
+  // optional-chained.
+  useEffect(() => {
+    if (state?.ok) ref.current?.reset();
+  }, [state]);
+
   return (
     <form ref={ref} action={formAction} className="space-y-2">
       <input type="hidden" name="conversationId" value={conversationId} />
@@ -30,7 +38,7 @@ export function ReplyForm({ conversationId }: { conversationId: string }) {
         />
         <Send />
       </div>
-      {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
     </form>
   );
 }

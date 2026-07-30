@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -90,5 +91,10 @@ export async function replyAction(_prev: FormState, formData: FormData): Promise
 
   const err = await deliver(userId, conversationId, parsed.data.content);
   if (err) return { ok: false, error: err };
-  redirect(`/messages/${conversationId}`);
+  // Stay on the same thread route rather than redirecting to it — redirecting
+  // to the current route leaves useFormState's state undefined mid-transition,
+  // which crashed ReplyForm reading state.error. Revalidate so the new
+  // message shows up without a client-side refresh.
+  revalidatePath(`/messages/${conversationId}`);
+  return { ok: true };
 }

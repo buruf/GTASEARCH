@@ -25,7 +25,9 @@ export function NewMessageForm({ listingId }: { listingId: string }) {
         placeholder="Hi, is this still available?"
         className="w-full rounded-btn border border-line p-3 text-sm focus:border-brand"
       />
-      {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
+      {/* startConversationAction redirects to a different route on success, so
+          state is briefly undefined during that transition too. */}
+      {state?.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
       <Send />
     </form>
   );
