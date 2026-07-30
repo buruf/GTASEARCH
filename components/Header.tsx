@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 import { SearchBar } from "@/components/SearchBar";
 import { UserMenu } from "@/components/UserMenu";
 
@@ -9,11 +10,8 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:h-16">
-        <Link
-          href="/"
-          className="shrink-0 text-xl font-extrabold tracking-tight text-brand sm:text-2xl"
-        >
-          GTA<span className="text-brand-light">Search</span>
+        <Link href="/" aria-label="GTASearch home" className="shrink-0">
+          <Logo />
         </Link>
 
         <div className="hidden flex-1 sm:block">

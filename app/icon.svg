@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">
+  <!-- GTASearch favicon: same tile as components/Logo.tsx — change together. -->
+  <rect x="0" y="0" width="72" height="72" rx="16" fill="#2E7D32"/>
+  <line x1="36" y1="10" x2="36" y2="19" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="36" cy="26.5" rx="11" ry="5" fill="#ffffff"/>
+  <rect x="33" y="30" width="6" height="28" fill="#ffffff"/>
+  <path d="M25 62 L36 49 L47 62 Z" fill="#ffffff"/>
+</svg>
