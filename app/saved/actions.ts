@@ -16,4 +16,5 @@ export async function toggleSavedAction(formData: FormData): Promise<void> {
   revalidatePath("/saved");
   revalidatePath("/");
   revalidatePath("/search");
+  if (listingId) revalidatePath(`/listing/${listingId}`);
 }
