@@ -15,13 +15,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  phone        String?
-  passwordHash String?
-  image        String?
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  phone         String?
+  passwordHash  String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  emailVerified DateTime?
 
   listings            Listing[]
   savedListings       SavedListing[]
@@ -31,10 +32,14 @@ model User {
   sellerConversations Conversation[] @relation("ConversationSeller")
   boostPayments       BoostPayment[]
   reportsFiled        Report[]
+
+  accounts            Account[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Listing {
-  id            String  @id @default(cuid())
+  id            String   @id @default(cuid())
   title         String
   description   String
   price         Decimal? @db.Decimal(10, 2) // null when priceType is free/contact/trade
@@ -49,7 +54,7 @@ model Listing {
   postalCode String?
 
   images         String[]
-  status         String    @default("active") // "active" | "sold" | "expired" | "deleted"
+  status         String    @default("active") // "draft" | "active" | "sold" | "expired" | "deleted"
   boostLevel     String    @default("none") // "none" | "top" | "featured" | "super"
   boostExpiresAt DateTime?
 
@@ -169,4 +174,58 @@ model Report {
 
   @@index([status, createdAt])
   @@index([listingId])
+}
+
+// ---- NextAuth adapter tables (JWT strategy: Session stays empty but the
+// adapter requires it; keeping it future-proofs a move to DB sessions). ----
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Forgot-password tokens. Only the SHA-256 hash is stored; the raw token
+// exists solely inside the emailed link. Single-use via usedAt.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
