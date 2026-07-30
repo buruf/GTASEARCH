@@ -163,7 +163,7 @@ export default async function ListingPage({
           </details>
 
           <p className="mt-4 text-sm">
-            <Link href="/coming-soon" className="text-ink-muted underline hover:text-brand">
+            <Link href={`/listing/${listing.id}/report`} className="text-ink-muted underline hover:text-brand">
               Report this ad
             </Link>
           </p>
