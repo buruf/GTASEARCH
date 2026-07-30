@@ -7,13 +7,22 @@ Tailwind, Prisma, PostgreSQL on Supabase.
 listing detail, sitemap. Read-only, no accounts.
 Design spec: `docs/superpowers/specs/2026-07-28-gtasearch-phase1-design.md`.
 
-**Phase 2 (current): accounts, posting and dashboard** — NextAuth sign
+**Phase 2: accounts, posting and dashboard** — NextAuth sign
 up/in, the multi-step post-ad flow (details, location, photos, review),
 listing edit/ownership, and the seller dashboard. Done and verified end to
 end (tests, types, production build).
 
-**Phase 3 (next):** Stripe boosts, messaging, email notifications,
-favourites.
+**Phase 3A (current): engagement** — buyer–seller messaging (inbox,
+threads, unread badges, first-unread email alerts), favourites with a
+/saved page, phone-number reveal, and the report-ad flow. Done — spec at
+`docs/superpowers/specs/2026-07-30-gtasearch-phase3a-engagement-design.md`.
+Messaging rules live in `lib/messages.ts`; the first-unread email trigger
+is `shouldNotify` on `sendMessage`. Reports are reviewed via Prisma Studio
+(`Report` table) until an admin console exists; set `ADMIN_EMAIL` to get
+an email per report.
+
+**Phase 3B (next):** Stripe boosts, the nightly expiry/boost-downgrade
+cron, and expiry-reminder emails.
 
 ## Setup
 
