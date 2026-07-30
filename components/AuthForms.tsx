@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerAction, type FormState } from "@/app/auth/actions";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 const input = "h-11 w-full rounded-btn border border-line px-3 text-sm focus:border-brand";
 const label = "mt-3 block text-sm font-medium text-ink";
@@ -19,7 +20,7 @@ function Submit({ children }: { children: React.ReactNode }) {
 export function AuthForms({ tab, googleOn }: { tab: "signin" | "register"; googleOn: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = safeCallbackUrl(params.get("callbackUrl"));
   const [signinError, setSigninError] = useState<string | null>(null);
   const [state, formAction] = useFormState<FormState, FormData>(registerAction, { ok: false });
 
