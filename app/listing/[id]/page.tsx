@@ -192,7 +192,7 @@ export default async function ListingPage({
                   Message seller
                 </Link>
               )}
-              {viewerId && listing.hasPhone ? (
+              {viewerId && viewerId !== listing.user.id && listing.hasPhone ? (
                 <PhoneReveal listingId={listing.id} />
               ) : !viewerId && listing.hasPhone ? (
                 <Link
