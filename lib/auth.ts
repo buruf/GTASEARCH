@@ -80,3 +80,10 @@ export async function requireUserId(): Promise<string> {
   if (!session?.user?.id) redirect("/auth/signin");
   return session.user.id;
 }
+
+/** For pages that render differently for signed-in vs. anonymous visitors
+ *  without forcing sign-in (e.g. the listing detail page). */
+export async function currentUserId(): Promise<string | null> {
+  const session = await getServerSession(authOptions);
+  return session?.user?.id ?? null;
+}

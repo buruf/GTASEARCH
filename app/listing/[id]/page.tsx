@@ -5,7 +5,11 @@ import { ImageGallery } from "@/components/ImageGallery";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ViewCounter } from "@/components/ViewCounter";
 import { ListingGrid } from "@/components/ListingCard";
+import { PhoneReveal } from "@/components/PhoneReveal";
+import { SaveHeart } from "@/components/SaveHeart";
+import { currentUserId } from "@/lib/auth";
 import { getPublicListing } from "@/lib/listing";
+import { savedIdsFor } from "@/lib/saved";
 import { similarListings } from "@/lib/search";
 import { getCategoryLabel, getSubcategoryLabel } from "@/lib/categories";
 import { getCityLabel } from "@/lib/cities";
@@ -52,6 +56,11 @@ export default async function ListingPage({
   const listing = await getPublicListing(params.id);
   if (!listing) notFound();
 
+  const viewerId = await currentUserId();
+  const isSaved = viewerId
+    ? (await savedIdsFor(viewerId, [listing.id])).length > 0
+    : false;
+
   const similar = await similarListings(
     listing.id,
     listing.category,
@@ -64,9 +73,6 @@ export default async function ListingPage({
     listing.subcategory,
   );
   const url = `https://gtasearch.com/listing/${listing.id}`;
-
-  const disabledBtn =
-    "w-full cursor-not-allowed rounded-btn border border-line bg-surface-alt px-4 py-2.5 text-sm font-semibold text-ink-faint";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -157,7 +163,7 @@ export default async function ListingPage({
           </details>
 
           <p className="mt-4 text-sm">
-            <Link href="/coming-soon" className="text-ink-muted underline hover:text-brand">
+            <Link href={`/listing/${listing.id}/report`} className="text-ink-muted underline hover:text-brand">
               Report this ad
             </Link>
           </p>
@@ -176,21 +182,39 @@ export default async function ListingPage({
             </p>
 
             <div className="mt-4 space-y-2">
-              {/* Deliberately inert until Phase 2 wires messaging and auth.
-                  Shown so the layout is final, but unmistakably inactive. */}
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                Message seller
-              </button>
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                Show phone number
-              </button>
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                ♥ Save to favourites
-              </button>
+              {viewerId === listing.user.id ? (
+                <Link href={`/listing/${listing.id}/edit`} className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark">
+                  Edit your listing
+                </Link>
+              ) : (
+                <Link
+                  href={viewerId ? `/messages/new?listing=${listing.id}` : `/auth/signin?callbackUrl=${encodeURIComponent(`/messages/new?listing=${listing.id}`)}`}
+                  className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
+                >
+                  Message seller
+                </Link>
+              )}
+              {viewerId && viewerId !== listing.user.id && listing.hasPhone ? (
+                <PhoneReveal listingId={listing.id} />
+              ) : !viewerId && listing.hasPhone ? (
+                <Link
+                  href={`/auth/signin?callbackUrl=${encodeURIComponent(`/listing/${listing.id}`)}`}
+                  className="block w-full rounded-btn border border-brand px-4 py-2.5 text-center text-sm font-semibold text-brand hover:bg-brand-50"
+                >
+                  Show phone number
+                </Link>
+              ) : null}
+              {viewerId ? (
+                <SaveHeart listingId={listing.id} saved={isSaved} variant="full" />
+              ) : (
+                <Link
+                  href={`/auth/signin?callbackUrl=${encodeURIComponent(`/listing/${listing.id}`)}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-btn border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:border-brand hover:text-brand"
+                >
+                  ♥ Save to favourites
+                </Link>
+              )}
             </div>
-            <p className="mt-3 text-xs text-ink-faint">
-              Contacting sellers goes live with accounts, shortly.
-            </p>
           </div>
 
           <p className="mt-4 px-1 text-xs text-ink-faint">

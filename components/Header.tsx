@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { unreadCountFor } from "@/lib/messages";
 import { Logo } from "@/components/Logo";
 import { SearchBar } from "@/components/SearchBar";
 import { UserMenu } from "@/components/UserMenu";
 
 export async function Header() {
   const session = await getServerSession(authOptions);
+  const unread = session?.user ? await unreadCountFor(session.user.id) : 0;
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:h-16">
@@ -20,7 +22,7 @@ export async function Header() {
 
         <div className="ml-auto flex items-center gap-2">
           {session?.user ? (
-            <UserMenu name={session.user.name ?? "Account"} />
+            <UserMenu name={session.user.name ?? "Account"} unread={unread} />
           ) : (
             <Link
               href="/auth/signin"

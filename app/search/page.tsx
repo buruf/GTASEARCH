@@ -11,6 +11,8 @@ import {
 } from "@/lib/search";
 import { getCategoryLabel } from "@/lib/categories";
 import { getCityLabel } from "@/lib/cities";
+import { currentUserId } from "@/lib/auth";
+import { savedIdsFor } from "@/lib/saved";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -40,6 +42,11 @@ export default async function SearchPage({
   const filters = parseSearchParams(searchParams);
   const { rows, total, usedFallback } = await searchListings(filters);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const viewerId = await currentUserId();
+  const savedIds = viewerId
+    ? await savedIdsFor(viewerId, rows.map((r) => r.id))
+    : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -77,7 +84,7 @@ export default async function SearchPage({
           ) : (
             <>
               <div className="mt-5">
-                <ListingGrid listings={rows} priorityCount={4} />
+                <ListingGrid listings={rows} priorityCount={4} savedIds={savedIds} />
               </div>
               <Pagination filters={filters} totalPages={totalPages} />
             </>

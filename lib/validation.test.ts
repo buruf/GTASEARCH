@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   RegisterSchema, DetailsStepSchema, LocationStepSchema, PhotosStepSchema,
+  MessageSchema, ReportSchema,
 } from "@/lib/validation";
 
 describe("RegisterSchema", () => {
@@ -64,5 +65,49 @@ describe("PhotosStepSchema", () => {
   it("rejects URLs from another cloud or host", () => {
     expect(PhotosStepSchema("demo").safeParse({ images: ["https://res.cloudinary.com/evil/image/upload/x.jpg"] }).success).toBe(false);
     expect(PhotosStepSchema("demo").safeParse({ images: ["https://example.com/x.jpg"] }).success).toBe(false);
+  });
+});
+
+describe("MessageSchema", () => {
+  it("trims and accepts 1-2000 chars", () => {
+    expect(MessageSchema.parse({ content: "  hi there  " }).content).toBe("hi there");
+  });
+  it("rejects empty and whitespace-only content", () => {
+    expect(MessageSchema.safeParse({ content: "   " }).success).toBe(false);
+  });
+  it("rejects content over 2000 chars", () => {
+    expect(MessageSchema.safeParse({ content: "x".repeat(2001) }).success).toBe(false);
+  });
+  it("accepts content of exactly 2000 chars", () => {
+    const result = MessageSchema.safeParse({ content: "x".repeat(2000) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content.length).toBe(2000);
+    }
+  });
+});
+
+describe("ReportSchema", () => {
+  it("accepts a known reason with empty details", () => {
+    const r = ReportSchema.parse({ reason: "scam", details: "" });
+    expect(r.reason).toBe("scam");
+    expect(r.details).toBe("");
+  });
+  it("rejects an unknown reason", () => {
+    expect(ReportSchema.safeParse({ reason: "dislike", details: "" }).success).toBe(false);
+  });
+  it("rejects details over 500 chars", () => {
+    expect(ReportSchema.safeParse({ reason: "other", details: "x".repeat(501) }).success).toBe(false);
+  });
+  it("accepts details of exactly 500 chars", () => {
+    const result = ReportSchema.safeParse({ reason: "other", details: "x".repeat(500) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.details.length).toBe(500);
+    }
+  });
+  it("rejects prototype chain methods like constructor and toString", () => {
+    expect(ReportSchema.safeParse({ reason: "constructor", details: "" }).success).toBe(false);
+    expect(ReportSchema.safeParse({ reason: "toString", details: "" }).success).toBe(false);
   });
 });

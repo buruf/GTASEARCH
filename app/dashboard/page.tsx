@@ -10,18 +10,6 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-function DisabledTab({ label }: { label: string }) {
-  return (
-    <span
-      title="Coming soon"
-      aria-disabled="true"
-      className="flex-1 cursor-not-allowed rounded-btn py-2 text-center text-sm font-semibold text-ink-faint"
-    >
-      {label}
-    </span>
-  );
-}
-
 export default async function DashboardPage() {
   const userId = await requireUserId();
 
@@ -46,8 +34,12 @@ export default async function DashboardPage() {
         <span className="flex-1 rounded-btn bg-brand py-2 text-center text-sm font-semibold text-white">
           My Ads
         </span>
-        <DisabledTab label="Saved" />
-        <DisabledTab label="Messages" />
+        <Link href="/saved" className="flex-1 rounded-btn py-2 text-center text-sm font-semibold text-ink-muted hover:bg-surface hover:text-ink">
+          Saved
+        </Link>
+        <Link href="/messages" className="flex-1 rounded-btn py-2 text-center text-sm font-semibold text-ink-muted hover:bg-surface hover:text-ink">
+          Messages
+        </Link>
       </div>
 
       <div className="mt-6 divide-y divide-line rounded-card border border-line bg-surface shadow-card">

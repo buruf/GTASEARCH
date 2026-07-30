@@ -3,14 +3,17 @@ import Link from "next/link";
 import type { ListingRow } from "@/lib/search";
 import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { getCityLabel } from "@/lib/cities";
+import { SaveHeart } from "@/components/SaveHeart";
 
 interface Props {
   listing: ListingRow;
   /** Renders the first few cards eagerly so the LCP image is not lazy-loaded. */
   priority?: boolean;
+  /** Undefined hides the heart entirely (signed-out visitors). */
+  saved?: boolean;
 }
 
-export function ListingCard({ listing, priority = false }: Props) {
+export function ListingCard({ listing, priority = false, saved }: Props) {
   // effectiveBoost: 0 super, 1 featured, 2 top, 3 none/lapsed. Uses the
   // computed rank, not boostLevel, so a lapsed boost shows no badge.
   const isFeatured = listing.effectiveBoost <= 1;
@@ -64,6 +67,19 @@ export function ListingCard({ listing, priority = false }: Props) {
           </p>
         </div>
       </Link>
+
+      {saved !== undefined && (
+        // Sibling of the Link, not a descendant: an <a> containing a <form>
+        // with a submit <button> is both invalid HTML and, even with
+        // stopPropagation, still lets the browser's native anchor activation
+        // navigate on click. Positioned on top of the image visually via
+        // absolute + the article's own `relative`, but outside the anchor in
+        // the DOM so clicks land only on the heart's own button. Tab order
+        // also becomes link -> heart, which is the right a11y order.
+        <div className="absolute right-2 top-2 z-10">
+          <SaveHeart listingId={listing.id} saved={saved} variant="card" />
+        </div>
+      )}
     </article>
   );
 }
@@ -71,15 +87,21 @@ export function ListingCard({ listing, priority = false }: Props) {
 export function ListingGrid({
   listings,
   priorityCount = 4,
+  savedIds,
 }: {
   listings: ListingRow[];
   priorityCount?: number;
+  savedIds?: string[];
 }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-4">
       {listings.map((l, i) => (
         <li key={l.id}>
-          <ListingCard listing={l} priority={i < priorityCount} />
+          <ListingCard
+            listing={l}
+            priority={i < priorityCount}
+            saved={savedIds ? savedIds.includes(l.id) : undefined}
+          />
         </li>
       ))}
     </ul>
