@@ -3,12 +3,17 @@
 Classifieds for the Greater Toronto Area. Next.js 14 (App Router), TypeScript,
 Tailwind, Prisma, PostgreSQL on Supabase.
 
-**Phase 1 (current): the public marketplace** — schema, seed, homepage, search,
+**Phase 1: the public marketplace** — schema, seed, homepage, search,
 listing detail, sitemap. Read-only, no accounts.
 Design spec: `docs/superpowers/specs/2026-07-28-gtasearch-phase1-design.md`.
 
-Phase 2 adds accounts, posting and image upload. Phase 3 adds Stripe boosts,
-messaging and email.
+**Phase 2 (current): accounts, posting and dashboard** — NextAuth sign
+up/in, the multi-step post-ad flow (details, location, photos, review),
+listing edit/ownership, and the seller dashboard. Done and verified end to
+end (tests, types, production build).
+
+**Phase 3 (next):** Stripe boosts, messaging, email notifications,
+favourites.
 
 ## Setup
 
@@ -27,6 +32,14 @@ ORMs → Prisma.
 
 If your database password contains `@ : / ? # &`, percent-encode it (`@` becomes
 `%40`) or the connection string will not parse.
+
+`NEXTAUTH_SECRET` and `NEXTAUTH_URL` are **required** for Phase 2 (accounts,
+posting, dashboard) — see `.env.example` for how to generate the secret.
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Google sign-in), `CLOUDINARY_*`
+(image upload) and `RESEND_API_KEY`/`EMAIL_FROM` (transactional email) are all
+**optional**: the app degrades gracefully without them (Google sign-in hidden,
+photo uploads disabled with a message, emails skipped) rather than failing to
+build or run. Full list and format in `.env.example`.
 
 ## Scripts
 
@@ -84,3 +97,7 @@ otherwise keep an expired boost at the top of results.
 `postalCode` is stored but never sent to the client. Listing queries use explicit
 `select` clauses that omit it, and a test asserts this while also confirming
 postal codes are actually populated, so it cannot pass trivially.
+
+Auth: NextAuth v4, JWT sessions; all mutation logic in `lib/manage.ts` /
+`lib/draft.ts` / `lib/users.ts` with ownership enforced server-side
+(`ownedListing`) on every mutation.
