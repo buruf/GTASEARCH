@@ -44,15 +44,24 @@ export async function getDraft(userId: string): Promise<Listing | null> {
 export async function getOrCreateDraft(userId: string): Promise<Listing> {
   const existing = await getDraft(userId);
   if (existing) return existing;
-  return db.listing.create({
-    data: {
-      title: "", description: "", category: "", city: "",
-      images: [], status: "draft", priceType: "fixed",
-      // Placeholder; publish recomputes it as now + 30 days.
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      userId,
-    },
-  });
+  try {
+    return await db.listing.create({
+      data: {
+        title: "", description: "", category: "", city: "",
+        images: [], status: "draft", priceType: "fixed",
+        // Placeholder; publish recomputes it as now + 30 days.
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        userId,
+      },
+    });
+  } catch (e: unknown) {
+    // P2002 = another concurrent call won the partial-unique-index race
+    // (one draft per user). Return the winner's draft instead of exploding.
+    if ((e as { code?: string }).code !== "P2002") throw e;
+    const winner = await db.listing.findFirst({ where: { userId, status: "draft" } });
+    if (!winner) throw e; // won and then deleted — genuinely exceptional
+    return winner;
+  }
 }
 
 export async function discardDraft(userId: string): Promise<void> {

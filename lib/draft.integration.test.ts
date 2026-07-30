@@ -43,4 +43,12 @@ describe("draft lifecycle", () => {
     await db.listing.update({ where: { id: d.id }, data: { createdAt: new Date(Date.now() - 8 * 86400000) } });
     expect(await getDraft(userId)).toBeNull();
   });
+
+  it("concurrent getOrCreateDraft calls both resolve to the same single draft", async () => {
+    await discardDraft(userId);
+    const [a, b] = await Promise.all([getOrCreateDraft(userId), getOrCreateDraft(userId)]);
+    expect(a.id).toBe(b.id);
+    const count = await db.listing.count({ where: { userId, status: "draft" } });
+    expect(count).toBe(1);
+  });
 });
