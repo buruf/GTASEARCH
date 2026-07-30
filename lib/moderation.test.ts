@@ -20,4 +20,16 @@ describe("violatesModeration", () => {
   it("clean text passes", () => {
     expect(violatesModeration("Brown leather sectional sofa, excellent condition")).toBe(false);
   });
+  it("purely numeric token must not leet-decode into a banned word — engine displacement", () => {
+    expect(violatesModeration("Selling Olds 455 engine")).toBe(false);
+  });
+  it("purely numeric/symbol tokens (price, displacement) must not trip", () => {
+    expect(violatesModeration("350 small block, $4500 obo")).toBe(false);
+  });
+  it("mixed alnum leet-speak still trips — 'c0ca1ne'", () => {
+    expect(violatesModeration("c0ca1ne")).toBe(true);
+  });
+  it("mixed alnum leet-speak still trips — 's3x' style token", () => {
+    expect(violatesModeration("looking for s3x toys")).toBe(true);
+  });
 });
