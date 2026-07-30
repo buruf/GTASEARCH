@@ -33,7 +33,7 @@ export class NotOwnerError extends Error {
 
 /** Loads the listing and enforces ownership — the IDOR guard every dashboard
  *  mutation goes through. Client-supplied IDs are never trusted alone. */
-async function ownedListing(userId: string, listingId: string) {
+export async function ownedListing(userId: string, listingId: string) {
   const listing = await db.listing.findUnique({ where: { id: listingId } });
   if (!listing || listing.status === "deleted") throw new NotOwnerError();
   if (listing.userId !== userId) throw new NotOwnerError();

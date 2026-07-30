@@ -9,15 +9,25 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function PhotoUploader({
-  cloudName, uploadPreset, initial,
-}: { cloudName: string; uploadPreset: string; initial: string[] }) {
+  cloudName, uploadPreset, initial, action = savePhotos, listingId, submitLabel = "Continue",
+}: {
+  cloudName?: string;
+  uploadPreset?: string;
+  initial: string[];
+  // Defaults to the wizard's savePhotos; edit page passes updatePhotos instead
+  // of duplicating this component (spec §6).
+  action?: (prev: FormState, formData: FormData) => Promise<FormState>;
+  listingId?: string;
+  submitLabel?: string;
+}) {
   const [urls, setUrls] = useState<string[]>(initial);
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [state, formAction] = useFormState<FormState, FormData>(savePhotos, { ok: false });
+  const [state, formAction] = useFormState<FormState, FormData>(action, { ok: false });
+  const canUpload = Boolean(cloudName && uploadPreset);
 
   async function onFiles(list: FileList | null) {
-    if (!list) return;
+    if (!list || !cloudName || !uploadPreset) return;
     setError(null);
     const files = Array.from(list).slice(0, 10 - urls.length);
     for (const f of files) {
@@ -48,18 +58,26 @@ export function PhotoUploader({
 
   return (
     <form action={formAction}>
+      {listingId && <input type="hidden" name="listingId" value={listingId} />}
       {urls.map((u) => <input key={u} type="hidden" name="images" value={u} />)}
 
-      <label className="mt-4 flex cursor-pointer flex-col items-center rounded-card border-2 border-dashed border-line p-8 text-center hover:border-brand">
-        <span className="text-sm font-medium text-ink">Click to add photos</span>
-        <span className="mt-1 text-xs text-ink-faint">Up to 10 · JPEG, PNG or WEBP · 5 MB each</span>
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
-          onChange={(e) => onFiles(e.target.files)} disabled={urls.length >= 10} />
-      </label>
+      {canUpload ? (
+        <label className="mt-4 flex cursor-pointer flex-col items-center rounded-card border-2 border-dashed border-line p-8 text-center hover:border-brand">
+          <span className="text-sm font-medium text-ink">Click to add photos</span>
+          <span className="mt-1 text-xs text-ink-faint">Up to 10 · JPEG, PNG or WEBP · 5 MB each</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
+            onChange={(e) => onFiles(e.target.files)} disabled={urls.length >= 10} />
+        </label>
+      ) : (
+        <p className="mt-4 rounded-card bg-surface-alt px-4 py-3 text-sm text-ink-muted">
+          Photo uploads aren&apos;t configured yet. You can still reorder or remove existing photos.
+        </p>
+      )}
 
       {uploading > 0 && <p className="mt-2 text-sm text-ink-muted">Uploading {uploading}…</p>}
       {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       {state.error && <p role="alert" className="mt-2 text-sm text-red-600">{state.error}</p>}
+      {state.ok && <p className="mt-2 text-sm text-green-700">Saved.</p>}
 
       <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {urls.map((u, i) => (
@@ -78,7 +96,7 @@ export function PhotoUploader({
 
       <button type="submit" disabled={uploading > 0}
         className="mt-6 h-11 w-full rounded-btn bg-brand text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
-        Continue
+        {submitLabel}
       </button>
     </form>
   );

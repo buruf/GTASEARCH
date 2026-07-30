@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { markSold, softDeleteListing, relistListing, NotOwnerError } from "@/lib/manage";
@@ -22,8 +23,15 @@ async function lifecycle(fn: (u: string, l: string) => Promise<void>, formData: 
 }
 
 export async function markSoldAction(formData: FormData) { await lifecycle(markSold, formData); }
-export async function deleteAction(formData: FormData) { await lifecycle(softDeleteListing, formData); }
 export async function relistAction(formData: FormData) { await lifecycle(relistListing, formData); }
+
+// Redirects (rather than just revalidating) so the edit page — which is not
+// itself /dashboard — navigates away once the listing it was showing is gone.
+// A no-op extra navigation when already on /dashboard.
+export async function deleteAction(formData: FormData) {
+  await lifecycle(softDeleteListing, formData);
+  redirect("/dashboard");
+}
 
 export async function updateProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const userId = await requireUserId();
