@@ -16,6 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "hourly",
       priority: 1,
     },
+    { url: `${BASE}/terms`, changeFrequency: "yearly" as const, priority: 0.2 },
+    { url: `${BASE}/privacy`, changeFrequency: "yearly" as const, priority: 0.2 },
     // Category and city landing pages: these are the filtered views worth
     // indexing. Arbitrary filter permutations are noindexed on /search itself.
     ...CATEGORIES.map((c) => ({

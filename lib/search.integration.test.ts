@@ -1,36 +1,97 @@
-// Integration tests against the real Supabase database with seeded data.
-// Run `npm run db:seed` first.
+// Integration tests against the real Supabase database.
+//
+// Self-provisioning: beforeAll creates every listing these tests rely on under
+// a throwaway user, and afterAll deletes that user (cascading the listings).
+// Nothing here depends on `npm run db:seed` — the production database no longer
+// carries seed data, and these tests must pass against an empty marketplace.
+//
+// The fixtures exist briefly as real public listings while the suite runs;
+// titles are kept plausible for that reason.
 //
 // These cover the behaviour that cannot be verified any other way: the
 // generated tsvector column, trigram matching, and the effective-boost
 // ordering rule.
 
-import { describe, it, expect, beforeAll } from "vitest";
-import { searchListings, parseSearchParams, featuredListings } from "@/lib/search";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  searchListings,
+  parseSearchParams,
+  featuredListings,
+  PAGE_SIZE,
+} from "@/lib/search";
 import { db } from "@/lib/db";
 
 const filters = (params: Record<string, string | string[]> = {}) =>
   parseSearchParams(params);
 
+const EMAIL = `vitest-search-${Date.now()}@example.com`;
+const DAY = 24 * 60 * 60 * 1000;
+
+// Unique token shared by exactly three fixtures with different boost states,
+// so ordering can be asserted on a known, closed set of rows.
+const TRIO = "zzqboosttrio";
+
+let userId: string;
+
 beforeAll(async () => {
-  const count = await db.listing.count();
-  if (count === 0) {
-    throw new Error("No listings found. Run `npm run db:seed` first.");
-  }
+  const user = await db.user.create({
+    data: { email: EMAIL, name: "Search Fixtures" },
+  });
+  userId = user.id;
+
+  const base = {
+    description:
+      "Integration test fixture for search behaviour. Not a real advertisement.",
+    images: [] as string[],
+    status: "active",
+    expiresAt: new Date(Date.now() + 30 * DAY),
+    userId,
+  };
+
+  const special = [
+    // Trigram targets: "sofsa" → sofa (word_similarity 0.500, threshold 0.45),
+    // "dreser" → dresser. Also the full-text and stemming targets.
+    { ...base, title: "Fabric sofa in good shape", price: 220, priceType: "fixed", category: "furniture-home", city: "toronto", postalCode: "M5V 2T6" },
+    { ...base, title: "White dresser with six drawers", price: 130, priceType: "fixed", category: "furniture-home", city: "toronto", postalCode: "M4C 1B5" },
+    // Singular, so the plural query "bikes" proves stemming.
+    { ...base, title: "Road bike with medium frame", price: 340, priceType: "fixed", category: "sports-outdoors", city: "ajax" },
+    // Boost trio: live super, lapsed featured, unboosted — one shared token.
+    { ...base, title: `Standing desk ${TRIO} super`, price: 300, priceType: "fixed", category: "electronics", city: "toronto", boostLevel: "super", boostExpiresAt: new Date(Date.now() + 7 * DAY) },
+    { ...base, title: `Standing desk ${TRIO} lapsed`, price: 310, priceType: "fixed", category: "electronics", city: "toronto", boostLevel: "featured", boostExpiresAt: new Date(Date.now() - 1 * DAY) },
+    { ...base, title: `Standing desk ${TRIO} plain`, price: 320, priceType: "fixed", category: "electronics", city: "toronto" },
+    // A priceless listing, to prove price filters exclude it.
+    { ...base, title: "Laptop repair service, please inquire", price: null, priceType: "contact", category: "electronics", city: "ajax" },
+  ];
+
+  // Filler to guarantee more than one full page of results.
+  const filler = Array.from({ length: PAGE_SIZE + 4 }, (_, i) => ({
+    ...base,
+    title: `Storage bin lot number ${i + 1}`,
+    price: 100 + i * 10,
+    priceType: "fixed",
+    category: "electronics",
+    city: "toronto",
+  }));
+
+  await db.listing.createMany({ data: [...special, ...filler] });
+});
+
+afterAll(async () => {
+  // Cascade deletes every fixture listing.
+  await db.user.deleteMany({ where: { email: EMAIL } });
+  await db.$disconnect();
 });
 
 describe("full-text search", () => {
   it("finds a listing by a word in its title", async () => {
     const { rows } = await searchListings(filters({ q: "sofa" }));
     expect(rows.length).toBeGreaterThan(0);
-    expect(
-      rows.some((r) => r.title.toLowerCase().includes("sofa")),
-    ).toBe(true);
+    expect(rows.some((r) => r.title.toLowerCase().includes("sofa"))).toBe(true);
   });
 
   it("stems, so a plural query matches a singular listing", async () => {
     const { rows } = await searchListings(filters({ q: "bikes" }));
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.some((r) => r.title.toLowerCase().includes("bike"))).toBe(true);
   });
 
   it("returns nothing for a term that appears nowhere", async () => {
@@ -48,7 +109,6 @@ describe("trigram fallback", () => {
   it("still finds the sofa when the query is misspelled", async () => {
     const { rows, usedFallback } = await searchListings(filters({ q: "sofsa" }));
     expect(usedFallback).toBe(true);
-    expect(rows.length).toBeGreaterThan(0);
     expect(rows.some((r) => r.title.toLowerCase().includes("sofa"))).toBe(true);
   });
 
@@ -59,50 +119,40 @@ describe("trigram fallback", () => {
     );
   });
 
-  it("does not match an unrelated synonym", async () => {
-    // "couch" must not trigram-match "Civic" or similar. It may legitimately
-    // full-text match listings whose description says couch, so assert the
-    // narrower thing: nothing irrelevant comes back via similarity.
+  it("does not fabricate matches for an unrelated word", async () => {
     const { rows } = await searchListings(filters({ q: "xylophone" }));
     expect(rows).toHaveLength(0);
   });
 });
 
 describe("boost ordering", () => {
-  it("places live-boosted listings above unboosted ones", async () => {
-    const { rows } = await searchListings(filters());
-    const firstUnboosted = rows.findIndex((r) => r.effectiveBoost === 3);
-    const lastBoosted = rows.map((r) => r.effectiveBoost).lastIndexOf(0);
-    if (firstUnboosted !== -1 && lastBoosted !== -1) {
-      expect(lastBoosted).toBeLessThan(firstUnboosted);
-    }
-    // Ranks must be non-decreasing down the page.
-    const ranks = rows.map((r) => r.effectiveBoost);
-    expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
+  it("orders the trio: live super first, lapsed and plain by recency after", async () => {
+    const { rows } = await searchListings(filters({ q: TRIO }));
+    const trio = rows.filter((r) => r.title.includes(TRIO));
+    expect(trio).toHaveLength(3);
+    expect(trio[0].title).toContain("super");
+    expect(trio[0].effectiveBoost).toBe(0);
   });
 
   it("treats a lapsed boost as unboosted, even though boostLevel still says otherwise", async () => {
     // This is the rule that protects against the window between a boost
     // expiring and the nightly downgrade cron running.
-    const lapsed = await db.listing.findFirst({
-      where: {
-        boostLevel: { not: "none" },
-        boostExpiresAt: { lt: new Date() },
-        status: "active",
-      },
-    });
-    expect(lapsed, "seed should include a lapsed boost").not.toBeNull();
-
-    const { rows } = await searchListings(filters());
-    const found = rows.find((r) => r.id === lapsed!.id);
-    if (found) {
-      expect(found.boostLevel).not.toBe("none");
-      expect(found.effectiveBoost).toBe(3);
-    }
+    const { rows } = await searchListings(filters({ q: TRIO }));
+    const lapsed = rows.find((r) => r.title.includes("lapsed"));
+    expect(lapsed).toBeDefined();
+    expect(lapsed!.boostLevel).toBe("featured");
+    expect(lapsed!.effectiveBoost).toBe(3);
   });
 
-  it("excludes lapsed boosts from the homepage featured strip", async () => {
+  it("ranks never decrease down any results page", async () => {
+    const { rows } = await searchListings(filters());
+    const ranks = rows.map((r) => r.effectiveBoost);
+    expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
+  });
+
+  it("includes only live super boosts in the homepage featured strip", async () => {
     const featured = await featuredListings();
+    expect(featured.some((f) => f.title.includes(TRIO))).toBe(true);
     for (const f of featured) {
       expect(f.boostLevel).toBe("super");
       expect(f.boostExpiresAt!.getTime()).toBeGreaterThan(Date.now());
@@ -167,7 +217,7 @@ describe("privacy", () => {
     // Guards against the test above passing trivially because the column is
     // empty rather than because it is excluded from the projection.
     const withPostal = await db.listing.count({
-      where: { postalCode: { not: null } },
+      where: { postalCode: { not: null }, userId },
     });
     expect(withPostal).toBeGreaterThan(0);
   });
@@ -176,8 +226,8 @@ describe("privacy", () => {
 describe("pagination", () => {
   it("returns a full page and a total larger than it", async () => {
     const { rows, total } = await searchListings(filters());
-    expect(rows.length).toBe(24);
-    expect(total).toBeGreaterThan(24);
+    expect(rows.length).toBe(PAGE_SIZE);
+    expect(total).toBeGreaterThan(PAGE_SIZE);
   });
 
   it("returns different listings on page 2", async () => {

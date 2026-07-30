@@ -50,7 +50,7 @@ build or run. Full list and format in `.env.example`.
 | `npm test` | Vitest suite (integration tests need a seeded database) |
 | `npm run db:migrate` | Generate a migration **without applying it** |
 | `npm run db:deploy` | Apply pending migrations |
-| `npm run db:seed` | Reset and reseed |
+| `npm run db:seed` | **DO NOT RUN — the database is live production.** Re-adds 50 fake listings that real visitors would see. Kept only for spinning up a separate dev database someday. |
 | `npm run db:studio` | Prisma Studio |
 
 ## Gotchas

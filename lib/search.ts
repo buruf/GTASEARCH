@@ -217,15 +217,20 @@ function filterConditions(f: SearchFilters): Prisma.Sql[] {
 function orderBy(f: SearchFilters, relevance: Prisma.Sql | null): Prisma.Sql {
   // Boosted listings lead in every sort mode — that is what advertisers pay
   // for, and the product spec requires it.
+  //
+  // "id" is the final tiebreaker in every mode: listings created in the same
+  // millisecond tie on createdAt, and without a total order Postgres may
+  // return ties differently on each query — which shuffles rows across page
+  // boundaries as a user paginates.
   switch (f.sort) {
     case "price-asc":
-      return Prisma.sql`${EFFECTIVE_BOOST}, "price" ASC NULLS LAST, "createdAt" DESC`;
+      return Prisma.sql`${EFFECTIVE_BOOST}, "price" ASC NULLS LAST, "createdAt" DESC, "id" DESC`;
     case "price-desc":
-      return Prisma.sql`${EFFECTIVE_BOOST}, "price" DESC NULLS LAST, "createdAt" DESC`;
+      return Prisma.sql`${EFFECTIVE_BOOST}, "price" DESC NULLS LAST, "createdAt" DESC, "id" DESC`;
     default:
       return relevance
-        ? Prisma.sql`${EFFECTIVE_BOOST}, ${relevance} DESC, "createdAt" DESC`
-        : Prisma.sql`${EFFECTIVE_BOOST}, "createdAt" DESC`;
+        ? Prisma.sql`${EFFECTIVE_BOOST}, ${relevance} DESC, "createdAt" DESC, "id" DESC`
+        : Prisma.sql`${EFFECTIVE_BOOST}, "createdAt" DESC, "id" DESC`;
   }
 }
 
