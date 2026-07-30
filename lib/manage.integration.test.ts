@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { db } from "@/lib/db";
 import { getOrCreateDraft } from "@/lib/draft";
-import { publishDraft } from "@/lib/manage";
+import { publishDraft, markSold, softDeleteListing, relistListing, NotOwnerError } from "@/lib/manage";
 import { getPublicListing } from "@/lib/listing";
 
 let userId: string;
@@ -48,5 +48,46 @@ describe("publishDraft", () => {
     const days = (row!.expiresAt.getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(29.9);
     expect(days).toBeLessThan(30.1);
+  });
+});
+
+describe("listing lifecycle mutations", () => {
+  let otherUserId: string;
+  let listingId: string;
+  const EMAIL2 = `vitest-other-${Date.now()}@example.com`;
+
+  beforeAll(async () => {
+    const other = await db.user.create({ data: { email: EMAIL2, name: "Other" } });
+    otherUserId = other.id;
+    const l = await db.listing.create({ data: {
+      title: "Lifecycle lamp", description: "A lamp for testing ownership and lifecycle transitions.",
+      category: "furniture-home", city: "toronto", images: [], status: "active",
+      expiresAt: new Date(Date.now() + 30 * 86_400_000), userId,
+    }});
+    listingId = l.id;
+  });
+  afterAll(async () => { await db.user.deleteMany({ where: { email: EMAIL2 } }); });
+
+  it("a non-owner cannot mutate (IDOR guard)", async () => {
+    await expect(markSold(otherUserId, listingId)).rejects.toThrow(NotOwnerError);
+    await expect(softDeleteListing(otherUserId, listingId)).rejects.toThrow(NotOwnerError);
+    await expect(relistListing(otherUserId, listingId)).rejects.toThrow(NotOwnerError);
+  });
+
+  it("mark sold → relist resets a 30-day expiry and reactivates", async () => {
+    await markSold(userId, listingId);
+    expect((await db.listing.findUnique({ where: { id: listingId } }))!.status).toBe("sold");
+    await relistListing(userId, listingId);
+    const row = await db.listing.findUnique({ where: { id: listingId } });
+    expect(row!.status).toBe("active");
+    expect(row!.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 86_400_000);
+  });
+
+  it("delete is soft — row remains, status deleted, invisible publicly", async () => {
+    await softDeleteListing(userId, listingId);
+    const row = await db.listing.findUnique({ where: { id: listingId } });
+    expect(row!.status).toBe("deleted");
+    const { getPublicListing } = await import("@/lib/listing");
+    expect(await getPublicListing(listingId)).toBeNull();
   });
 });

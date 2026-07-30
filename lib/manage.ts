@@ -26,3 +26,35 @@ export async function publishDraft(
   });
   return { ok: true, listingId: updated.id };
 }
+
+export class NotOwnerError extends Error {
+  constructor() { super("Not the owner of this listing"); }
+}
+
+/** Loads the listing and enforces ownership — the IDOR guard every dashboard
+ *  mutation goes through. Client-supplied IDs are never trusted alone. */
+async function ownedListing(userId: string, listingId: string) {
+  const listing = await db.listing.findUnique({ where: { id: listingId } });
+  if (!listing || listing.status === "deleted") throw new NotOwnerError();
+  if (listing.userId !== userId) throw new NotOwnerError();
+  return listing;
+}
+
+export async function markSold(userId: string, listingId: string): Promise<void> {
+  await ownedListing(userId, listingId);
+  await db.listing.update({ where: { id: listingId }, data: { status: "sold" } });
+}
+
+export async function softDeleteListing(userId: string, listingId: string): Promise<void> {
+  await ownedListing(userId, listingId);
+  await db.listing.update({ where: { id: listingId }, data: { status: "deleted" } });
+}
+
+export async function relistListing(userId: string, listingId: string): Promise<void> {
+  await ownedListing(userId, listingId);
+  // createdAt untouched: relisting is not a free bump to the top (spec §5).
+  await db.listing.update({
+    where: { id: listingId },
+    data: { status: "active", expiresAt: new Date(Date.now() + THIRTY_DAYS) },
+  });
+}
