@@ -5,6 +5,7 @@ import { ImageGallery } from "@/components/ImageGallery";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ViewCounter } from "@/components/ViewCounter";
 import { ListingGrid } from "@/components/ListingCard";
+import { currentUserId } from "@/lib/auth";
 import { getPublicListing } from "@/lib/listing";
 import { similarListings } from "@/lib/search";
 import { getCategoryLabel, getSubcategoryLabel } from "@/lib/categories";
@@ -51,6 +52,8 @@ export default async function ListingPage({
 }) {
   const listing = await getPublicListing(params.id);
   if (!listing) notFound();
+
+  const viewerId = await currentUserId();
 
   const similar = await similarListings(
     listing.id,
@@ -176,11 +179,20 @@ export default async function ListingPage({
             </p>
 
             <div className="mt-4 space-y-2">
-              {/* Deliberately inert until Phase 2 wires messaging and auth.
-                  Shown so the layout is final, but unmistakably inactive. */}
-              <button type="button" className={disabledBtn} disabled title="Coming soon">
-                Message seller
-              </button>
+              {viewerId === listing.user.id ? (
+                <Link href={`/listing/${listing.id}/edit`} className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark">
+                  Edit your listing
+                </Link>
+              ) : (
+                <Link
+                  href={viewerId ? `/messages/new?listing=${listing.id}` : `/auth/signin?callbackUrl=${encodeURIComponent(`/messages/new?listing=${listing.id}`)}`}
+                  className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
+                >
+                  Message seller
+                </Link>
+              )}
+              {/* Deliberately inert until later tasks wire phone reveal and
+                  favourites. Shown so the layout is final, but unmistakably inactive. */}
               <button type="button" className={disabledBtn} disabled title="Coming soon">
                 Show phone number
               </button>

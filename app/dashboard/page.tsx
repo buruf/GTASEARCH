@@ -47,7 +47,9 @@ export default async function DashboardPage() {
           My Ads
         </span>
         <DisabledTab label="Saved" />
-        <DisabledTab label="Messages" />
+        <Link href="/messages" className="flex-1 rounded-btn py-2 text-center text-sm font-semibold text-ink-muted hover:bg-surface hover:text-ink">
+          Messages
+        </Link>
       </div>
 
       <div className="mt-6 divide-y divide-line rounded-card border border-line bg-surface shadow-card">
