@@ -57,11 +57,27 @@ export async function getOrCreateConversation(
     throw new ListingUnavailableError();
   }
 
-  const convo = await db.conversation.create({
-    data: { listingId, buyerId, sellerId: listing.userId },
-    select: { id: true },
-  });
-  return { id: convo.id, created: true };
+  // TOCTOU: two concurrent calls (double-click, two tabs) can both pass the
+  // `existing` check above as null and both attempt to create. The
+  // @@unique([listingId, buyerId]) constraint lets exactly one insert win;
+  // the loser gets a Prisma P2002 here rather than a duplicate row. Treat
+  // that as the happy "already exists" path instead of surfacing an error.
+  try {
+    const convo = await db.conversation.create({
+      data: { listingId, buyerId, sellerId: listing.userId },
+      select: { id: true },
+    });
+    return { id: convo.id, created: true };
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") {
+      const winner = await db.conversation.findUniqueOrThrow({
+        where: { listingId_buyerId: { listingId, buyerId } },
+        select: { id: true },
+      });
+      return { id: winner.id, created: false };
+    }
+    throw e;
+  }
 }
 
 async function participantConversation(userId: string, conversationId: string) {
