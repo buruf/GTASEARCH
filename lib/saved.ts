@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { effectiveBoostOf } from "@/lib/boost";
 
 export async function toggleSaved(
   userId: string,
@@ -64,12 +65,9 @@ export async function savedListingsFor(userId: string) {
     else if (listing.status === "sold") displayStatus = "sold";
     else if (listing.status !== "active" || listing.expiresAt <= new Date()) displayStatus = "expired";
     else displayStatus = "active";
-    const boostLive = listing.boostExpiresAt !== null && listing.boostExpiresAt > new Date();
     return {
       ...listing,
-      effectiveBoost: boostLive && listing.boostLevel === "super" ? 0
-        : boostLive && listing.boostLevel === "featured" ? 1
-        : boostLive && listing.boostLevel === "top" ? 2 : 3,
+      effectiveBoost: effectiveBoostOf(listing.boostLevel, listing.boostExpiresAt),
       savedAt,
       displayStatus,
     };
