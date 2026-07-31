@@ -20,6 +20,9 @@ export const DUMMY_HASH = "$2b$12$WF4VoD0QelE.xgzlJAYka.OlHZw2lDQ9Mcss.M13WpoDJh
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
+  // Explicit, and identical to the expression in middleware.ts — see the
+  // comment there. Both runtimes MUST derive the JWT key from the same value.
+  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
   // JWT because the credentials provider cannot use database sessions.
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/signin" },
