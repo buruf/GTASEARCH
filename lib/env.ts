@@ -25,3 +25,7 @@ export function appUrl(): string {
 export function adminEmail(): string | null {
   return process.env.ADMIN_EMAIL || null;
 }
+
+export function stripeEnabled(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY);
+}
