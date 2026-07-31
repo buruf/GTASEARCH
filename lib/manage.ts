@@ -53,9 +53,12 @@ export async function softDeleteListing(userId: string, listingId: string): Prom
 }
 
 export async function relistListing(userId: string, listingId: string): Promise<void> {
-  // "active" covers the expired display state; drafts must go through
-  // publishDraft only (spec §4/§5 — lifecycle actions must not bypass it).
-  await ownedListing(userId, listingId, ["sold", "active"]);
+  // "active" covers the derived-expired display state; "expired" covers the
+  // stored status the nightly cron now writes (spec §6) — the "Relist for
+  // free" CTA promised in the expiry reminder email must work either way.
+  // Drafts must go through publishDraft only (spec §4/§5 — lifecycle
+  // actions must not bypass it).
+  await ownedListing(userId, listingId, ["sold", "active", "expired"]);
   // createdAt untouched: relisting is not a free bump to the top (spec §5).
   await db.listing.update({
     where: { id: listingId },
