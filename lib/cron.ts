@@ -59,6 +59,7 @@ export async function sendExpiryReminders(
       id: true, title: true, expiresAt: true,
       user: { select: { email: true } },
     },
+    orderBy: { expiresAt: "asc" },
     take: REMINDER_CAP,
   });
 

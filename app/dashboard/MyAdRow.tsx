@@ -87,7 +87,7 @@ export function MyAdRow({ listing }: { listing: MyAdRowListing }) {
             Edit
           </Link>
         )}
-        {status === "active" && stripeEnabled() && (
+        {status === "active" && listing.expiresAt.getTime() > Date.now() && stripeEnabled() && (
           <Link href={`/listing/${listing.id}/boost`} className={actionButton}>
             Boost
           </Link>

@@ -4,7 +4,6 @@
 // boost state.
 
 import Stripe from "stripe";
-import { db } from "@/lib/db";
 import { BOOST_TIERS, type BoostTierKey } from "@/lib/boost";
 import { ownedListing } from "@/lib/manage";
 import { stripeEnabled, appUrl } from "@/lib/env";

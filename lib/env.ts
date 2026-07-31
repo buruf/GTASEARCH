@@ -26,6 +26,8 @@ export function adminEmail(): string | null {
   return process.env.ADMIN_EMAIL || null;
 }
 
+// Both are required — checkout without webhook verification would take
+// money without ever applying boosts.
 export function stripeEnabled(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
 }

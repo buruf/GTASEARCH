@@ -25,6 +25,15 @@ export async function POST(request: Request) {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  // Delayed-notification payment methods (e.g. some bank debits) complete
+  // the checkout session before money actually moves. Only "paid" sessions
+  // should apply the boost; async_payment_succeeded handling can be added
+  // if such methods are ever enabled.
+  if (session.payment_status !== "paid") {
+    return NextResponse.json({ received: true, result: "unpaid" });
+  }
+
   const result = await applyBoostCheckout({
     sessionId: session.id,
     amountCents: session.amount_total ?? 0,
