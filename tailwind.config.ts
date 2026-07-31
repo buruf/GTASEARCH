@@ -21,7 +21,9 @@ const config: Config = {
         ink: {
           DEFAULT: "#212121",
           muted: "#616161",
-          faint: "#9E9E9E",
+          // Lightest text still passing WCAG AA (4.5:1) on both white and
+          // the #F5F5F5 alt surface. The previous #9E9E9E failed at 2.8:1.
+          faint: "#6E6E6E",
         },
         surface: {
           DEFAULT: "#FFFFFF",

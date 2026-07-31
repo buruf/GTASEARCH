@@ -28,8 +28,10 @@ export function Logo() {
   return (
     <span className="flex items-center gap-2">
       <LogoTile />
-      <span className="text-xl font-extrabold tracking-tight text-brand sm:text-2xl">
-        GTA<span className="text-brand-light">Search</span>
+      {/* Two-tone in dark greens: brand-light (#66BB6A) fails WCAG contrast
+          as text on white (2.2:1), so the split is dark-vs-mid instead. */}
+      <span className="text-xl font-extrabold tracking-tight text-brand-dark sm:text-2xl">
+        GTA<span className="text-brand">Search</span>
       </span>
     </span>
   );
