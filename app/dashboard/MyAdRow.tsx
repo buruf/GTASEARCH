@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice, formatRelativeTime, type PriceInput } from "@/lib/format";
 import { firstIncompleteStep, stepPath } from "@/lib/draft";
+import { stripeEnabled } from "@/lib/env";
 import { markSoldAction, relistAction, deleteAction } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 
@@ -84,6 +85,11 @@ export function MyAdRow({ listing }: { listing: MyAdRowListing }) {
         {!isDraft && (
           <Link href={`/listing/${listing.id}/edit`} className={actionButton}>
             Edit
+          </Link>
+        )}
+        {status === "active" && stripeEnabled() && (
+          <Link href={`/listing/${listing.id}/boost`} className={actionButton}>
+            Boost
           </Link>
         )}
         {status === "active" && (

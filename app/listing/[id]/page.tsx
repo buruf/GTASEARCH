@@ -13,6 +13,7 @@ import { savedIdsFor } from "@/lib/saved";
 import { similarListings } from "@/lib/search";
 import { getCategoryLabel, getSubcategoryLabel } from "@/lib/categories";
 import { getCityLabel } from "@/lib/cities";
+import { stripeEnabled } from "@/lib/env";
 import {
   formatDate,
   formatMemberSince,
@@ -50,8 +51,10 @@ export async function generateMetadata({
 
 export default async function ListingPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { boost?: string };
 }) {
   const listing = await getPublicListing(params.id);
   if (!listing) notFound();
@@ -98,6 +101,16 @@ export default async function ListingPage({
 
       <div className="lg:flex lg:gap-8">
         <div className="min-w-0 lg:flex-1">
+          {searchParams.boost === "success" && (
+            <p className="mb-4 rounded-card bg-brand-50 px-4 py-3 text-sm font-medium text-brand-dark">
+              Boost payment received — your placement updates within a minute.
+            </p>
+          )}
+          {searchParams.boost === "checkout-failed" && (
+            <p className="mb-4 rounded-card bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Your ad is live, but the payment page couldn&apos;t be opened. You can boost it any time from your dashboard.
+            </p>
+          )}
           <ImageGallery images={listing.images} title={listing.title} />
 
           <div className="mt-6">
@@ -183,9 +196,16 @@ export default async function ListingPage({
 
             <div className="mt-4 space-y-2">
               {viewerId === listing.user.id ? (
-                <Link href={`/listing/${listing.id}/edit`} className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark">
-                  Edit your listing
-                </Link>
+                <>
+                  <Link href={`/listing/${listing.id}/edit`} className="block w-full rounded-btn bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark">
+                    Edit your listing
+                  </Link>
+                  {stripeEnabled() && (
+                    <Link href={`/listing/${listing.id}/boost`} className="block w-full rounded-btn border border-line px-4 py-2.5 text-center text-sm font-semibold text-ink hover:border-brand hover:text-brand">
+                      Boost this ad
+                    </Link>
+                  )}
+                </>
               ) : (
                 <Link
                   href={viewerId ? `/messages/new?listing=${listing.id}` : `/auth/signin?callbackUrl=${encodeURIComponent(`/messages/new?listing=${listing.id}`)}`}
