@@ -19,8 +19,8 @@ export function Footer() {
           <div>
             <h2 className="text-sm font-semibold text-ink">GTASearch</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-muted">
-              <li><Link href="/coming-soon" className="hover:text-brand">About</Link></li>
-              <li><Link href="/coming-soon" className="hover:text-brand">Contact</Link></li>
+              <li><Link href="/about" className="hover:text-brand">About</Link></li>
+              <li><Link href="/contact" className="hover:text-brand">Contact</Link></li>
               <li><Link href="/terms" className="hover:text-brand">Terms</Link></li>
               <li><Link href="/privacy" className="hover:text-brand">Privacy</Link></li>
               <li><Link href="/post-ad" className="hover:text-brand">Post Ad</Link></li>

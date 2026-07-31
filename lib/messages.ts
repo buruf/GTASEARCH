@@ -114,7 +114,7 @@ export async function sendMessage(
       data: { updatedAt: new Date() },
       select: { id: true },
     }),
-  ]).then(([count, msg]) => [count, msg] as const);
+  ]);
 
   // One alert per conversation until the recipient reads it: notify only when
   // this message is the first unread they have in the thread.
