@@ -40,4 +40,15 @@ describe("createReport", () => {
     await createReport(null, listingId, "other", "");
     expect(await db.report.count({ where: { listingId, reporterId: null } })).toBe(2);
   });
+
+  it("dedupe survives a race: concurrent duplicate inserts yield one row", async () => {
+    // The app-level findFirst check can pass twice concurrently; the partial
+    // unique index must make the second insert a duplicate, not a crash.
+    const results = await Promise.all([
+      createReport(reporterId, listingId, "other", "race a"),
+      createReport(reporterId, listingId, "other", "race b"),
+    ]);
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(await db.report.count({ where: { listingId, reporterId } })).toBe(1);
+  });
 });

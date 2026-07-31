@@ -16,8 +16,16 @@ export async function createReport(
     });
     if (existing) return { ok: true, duplicate: true };
   }
-  await db.report.create({
-    data: { listingId, reporterId, reason, details: details || null },
-  });
+  try {
+    await db.report.create({
+      data: { listingId, reporterId, reason, details: details || null },
+    });
+  } catch (e) {
+    // Partial unique index Report_one_per_reporter: a concurrent duplicate
+    // from the same signed-in reporter lost the race — same outcome as the
+    // findFirst check, acknowledged identically.
+    if ((e as { code?: string }).code === "P2002") return { ok: true, duplicate: true };
+    throw e;
+  }
   return { ok: true, duplicate: false };
 }

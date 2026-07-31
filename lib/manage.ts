@@ -59,6 +59,6 @@ export async function relistListing(userId: string, listingId: string): Promise<
   // createdAt untouched: relisting is not a free bump to the top (spec §5).
   await db.listing.update({
     where: { id: listingId },
-    data: { status: "active", expiresAt: new Date(Date.now() + THIRTY_DAYS) },
+    data: { status: "active", expiresAt: new Date(Date.now() + THIRTY_DAYS), expiryReminderAt: null },
   });
 }
