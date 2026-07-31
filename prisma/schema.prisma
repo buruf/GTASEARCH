@@ -61,6 +61,9 @@ model Listing {
   // Stored rather than derived from createdAt, so relisting works correctly and
   // the Phase 3 expiry-reminder job has a single source of truth.
   expiresAt DateTime
+  // Set when the "expiring soon" reminder email is sent; cleared on relist so
+  // each 30-day cycle gets exactly one reminder. Written only by the cron.
+  expiryReminderAt DateTime?
 
   views  Int    @default(0)
   userId String

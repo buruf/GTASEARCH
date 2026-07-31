@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice, formatRelativeTime, type PriceInput } from "@/lib/format";
 import { firstIncompleteStep, stepPath } from "@/lib/draft";
+import { stripeEnabled } from "@/lib/env";
 import { markSoldAction, relistAction, deleteAction } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 
@@ -39,8 +40,11 @@ const CHIP_LABEL: Record<DisplayStatus, string> = {
 function displayStatus(listing: MyAdRowListing): DisplayStatus {
   if (listing.status === "draft") return "draft";
   if (listing.status === "sold") return "sold";
+  // The nightly cron (spec §6) now flips stored status to "expired" once
+  // expiresAt passes — show it the same as the derived case below.
+  if (listing.status === "expired") return "expired";
   // A listing left in "active" past its expiry is shown as Expired even
-  // though nothing has flipped its stored status (spec §6, no cron yet).
+  // before the cron catches up and flips the stored status.
   if (listing.status === "active" && listing.expiresAt.getTime() < Date.now()) return "expired";
   return "active";
 }
@@ -84,6 +88,11 @@ export function MyAdRow({ listing }: { listing: MyAdRowListing }) {
         {!isDraft && (
           <Link href={`/listing/${listing.id}/edit`} className={actionButton}>
             Edit
+          </Link>
+        )}
+        {status === "active" && listing.expiresAt.getTime() > Date.now() && stripeEnabled() && (
+          <Link href={`/listing/${listing.id}/boost`} className={actionButton}>
+            Boost
           </Link>
         )}
         {status === "active" && (

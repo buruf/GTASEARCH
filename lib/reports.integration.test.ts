@@ -3,7 +3,11 @@ import { db } from "@/lib/db";
 import { createReport } from "@/lib/reports";
 
 const STAMP = Date.now();
-const EMAILS = [`vitest-rep-owner-${STAMP}@example.com`, `vitest-rep-user-${STAMP}@example.com`];
+const EMAILS = [
+  `vitest-rep-owner-${STAMP}@example.com`,
+  `vitest-rep-user-${STAMP}@example.com`,
+  `vitest-rep-racer-${STAMP}@example.com`,
+];
 let ownerId: string, reporterId: string, listingId: string;
 
 beforeAll(async () => {
@@ -39,5 +43,19 @@ describe("createReport", () => {
   it("anonymous reports are never deduped against each other", async () => {
     await createReport(null, listingId, "other", "");
     expect(await db.report.count({ where: { listingId, reporterId: null } })).toBe(2);
+  });
+
+  it("dedupe survives a race: concurrent duplicate inserts yield one row", async () => {
+    // Fresh reporter with no prior row for (racer.id, listingId), so both
+    // concurrent calls pass the app-level findFirst check and actually race
+    // the insert — the partial unique index must make the loser a duplicate,
+    // not a crash.
+    const racer = await db.user.create({ data: { email: `vitest-rep-racer-${STAMP}@example.com`, name: "Racer" } });
+    const results = await Promise.all([
+      createReport(racer.id, listingId, "other", "race a"),
+      createReport(racer.id, listingId, "other", "race b"),
+    ]);
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(await db.report.count({ where: { listingId, reporterId: racer.id } })).toBe(1);
   });
 });

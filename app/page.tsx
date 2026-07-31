@@ -6,9 +6,7 @@ import { categoryCounts, featuredListings, recentListings } from "@/lib/search";
 import { currentUserId } from "@/lib/auth";
 import { savedIdsFor } from "@/lib/saved";
 
-// Listings change often enough that a stale homepage looks broken, but not so
-// often that every visitor needs a fresh query.
-export const revalidate = 60;
+// This route renders dynamically on every request (the layout Header reads the session), so no revalidate window applies.
 
 export default async function HomePage() {
   const [counts, featured, recent, viewerId] = await Promise.all([

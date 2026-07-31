@@ -99,4 +99,32 @@ describe("listing lifecycle mutations", () => {
     expect(row!.status).toBe("draft");
     await db.listing.delete({ where: { id: draft.id } });
   });
+
+  it("relist clears the expiry reminder marker", async () => {
+    await db.listing.update({
+      where: { id: listingId },
+      data: { status: "sold", expiryReminderAt: new Date() },
+    });
+    await relistListing(userId, listingId);
+    const row = await db.listing.findUnique({ where: { id: listingId } });
+    expect(row!.expiryReminderAt).toBeNull();
+  });
+
+  it("relist works on a cron-expired listing (the 'Relist for free' CTA from the reminder email)", async () => {
+    await db.listing.update({
+      where: { id: listingId },
+      data: {
+        status: "expired",
+        expiresAt: new Date(Date.now() - 2 * 86_400_000),
+        expiryReminderAt: new Date(),
+      },
+    });
+    await relistListing(userId, listingId);
+    const row = await db.listing.findUnique({ where: { id: listingId } });
+    expect(row!.status).toBe("active");
+    const days = (row!.expiresAt.getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(29.9);
+    expect(days).toBeLessThan(30.1);
+    expect(row!.expiryReminderAt).toBeNull();
+  });
 });

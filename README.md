@@ -12,7 +12,7 @@ up/in, the multi-step post-ad flow (details, location, photos, review),
 listing edit/ownership, and the seller dashboard. Done and verified end to
 end (tests, types, production build).
 
-**Phase 3A (current): engagement** — buyer–seller messaging (inbox,
+**Phase 3A: engagement** — buyer–seller messaging (inbox,
 threads, unread badges, first-unread email alerts), favourites with a
 /saved page, phone-number reveal, and the report-ad flow. Done — spec at
 `docs/superpowers/specs/2026-07-30-gtasearch-phase3a-engagement-design.md`.
@@ -21,8 +21,28 @@ is `shouldNotify` on `sendMessage`. Reports are reviewed via Prisma Studio
 (`Report` table) until an admin console exists; set `ADMIN_EMAIL` to get
 an email per report.
 
-**Phase 3B (next):** Stripe boosts, the nightly expiry/boost-downgrade
-cron, and expiry-reminder emails.
+**Phase 3B (current): money** — Stripe boost purchases (Top $4.99/7d,
+Featured $9.99/14d, Super $14.99/30d; publish-first-then-pay; webhook is
+the only writer of boost state, replay-safe via the unique `stripeId`,
+atomic payment+apply transaction), the nightly cron
+(`/api/cron/nightly`: expiry, boost downgrade, draft sweep, expiry
+reminders — bearer-gated by `CRON_SECRET`, fails closed without it), and
+expiry-reminder emails. Done — spec at
+`docs/superpowers/specs/2026-07-30-gtasearch-phase3b-money-design.md`.
+This completes every feature in the original product brief.
+
+**When Stripe keys arrive** (account at stripe.com, test mode first):
+1. Set `STRIPE_SECRET_KEY` (sk_test_…) locally and in Vercel.
+2. In the Stripe dashboard: Developers → Webhooks → Add endpoint →
+   `https://www.gtasearch.com/api/stripe/webhook`, event
+   `checkout.session.completed`; copy the signing secret into
+   `STRIPE_WEBHOOK_SECRET` (both places).
+3. Test with card 4242 4242 4242 4242. Boost UI appears automatically
+   once the key exists — zero code changes.
+
+`CRON_SECRET` must be set in Vercel (any long random string) before the
+nightly cron does anything — the endpoint deliberately refuses (503)
+without it.
 
 ## Setup
 
@@ -30,7 +50,6 @@ cron, and expiry-reminder emails.
 npm install
 cp .env.example .env    # then fill in DATABASE_URL and DIRECT_URL
 npm run db:deploy       # apply migrations
-npm run db:seed         # 5 users, 50 listings
 npm run dev
 ```
 

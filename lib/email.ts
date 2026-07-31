@@ -61,3 +61,22 @@ export async function sendReportEmail(
     return false;
   }
 }
+
+export async function sendExpiryReminderEmail(
+  to: string,
+  args: { title: string; daysLeft: number; dashboardUrl: string },
+): Promise<boolean> {
+  if (!resendEnabled()) return false;
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? "GTASearch <onboarding@resend.dev>",
+      to,
+      subject: `Your ad "${args.title}" expires in ${args.daysLeft} day${args.daysLeft === 1 ? "" : "s"}`,
+      text: `Your GTASearch ad "${args.title}" expires in ${args.daysLeft} day${args.daysLeft === 1 ? "" : "s"}.\n\nRelist it free in one click from your dashboard:\n${args.dashboardUrl}\n\nIf it sold — congratulations! Mark it sold from the same page.`,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -8,6 +8,8 @@ import { CategoryStepSchema, DetailsStepSchema, LocationStepSchema, PhotosStepSc
 import { cloudinaryConfig } from "@/lib/env";
 import { publishDraft } from "@/lib/manage";
 import { rateLimit } from "@/lib/rate-limit";
+import { isBoostTierKey } from "@/lib/boost";
+import { createBoostCheckout, StripeDisabledError } from "@/lib/stripe";
 import type { FormState } from "@/app/auth/actions";
 
 export async function saveCategory(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -92,6 +94,39 @@ export async function publishAction(_prev: FormState, _formData: FormData): Prom
   const r = await publishDraft(userId);
   if (!r.ok) return { ok: false, error: r.error };
   redirect(`/listing/${r.listingId}`);
+}
+
+/**
+ * Wizard boost step, paid path (spec §4: publish first, then pay). The ad
+ * goes live unconditionally; an abandoned checkout costs nothing. Free path
+ * continues to review via the plain link.
+ */
+export async function publishWithBoostAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const userId = await requireUserId();
+  const tier = String(formData.get("tier") ?? "");
+  if (!isBoostTierKey(tier)) return { ok: false, error: "Pick a boost option." };
+  if (!rateLimit(`publish:${userId}`, 10, 24 * 60 * 60 * 1000)) {
+    return { ok: false, error: "You've reached the daily posting limit." };
+  }
+  if (!rateLimit(`boost:${userId}`, 10, 24 * 60 * 60 * 1000)) {
+    return { ok: false, error: "Too many checkout attempts today." };
+  }
+
+  const r = await publishDraft(userId);
+  if (!r.ok) return { ok: false, error: r.error };
+
+  let url: string;
+  try {
+    url = await createBoostCheckout(userId, r.listingId, tier);
+  } catch (e) {
+    if (e instanceof StripeDisabledError) {
+      // Ad is live; payment just isn't possible. Land on the listing honestly.
+      redirect(`/listing/${r.listingId}`);
+    }
+    // Checkout failed but the ad is published — never strand the seller.
+    redirect(`/listing/${r.listingId}?boost=checkout-failed`);
+  }
+  redirect(url);
 }
 
 export async function discardAndRestart(): Promise<void> {

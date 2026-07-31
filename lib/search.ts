@@ -169,6 +169,7 @@ export function buildSearchUrl(
  * job running, a listing still carries a stale boostLevel. Checking
  * boostExpiresAt here keeps expired boosts out of the top slots regardless.
  */
+// Mirrored in TypeScript by effectiveBoostOf() in lib/boost.ts — change both.
 const EFFECTIVE_BOOST = Prisma.sql`
   CASE
     WHEN "boostExpiresAt" IS NULL OR "boostExpiresAt" <= now() THEN 3
