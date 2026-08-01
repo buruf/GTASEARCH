@@ -2,13 +2,30 @@ import type { MetadataRoute } from "next";
 import { allVisibleListingIds } from "@/lib/listing";
 import { CATEGORIES } from "@/lib/categories";
 import { CITIES } from "@/lib/cities";
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+import { businessCityCounts } from "@/lib/business";
+import { db } from "@/lib/db";
 
 const BASE = "https://gtasearch.com";
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const listings = await allVisibleListingIds();
+  const [listings, categoryCityCounts, activeBusinesses] = await Promise.all([
+    allVisibleListingIds(),
+    // One businessCityCounts() call per category — the directory taxonomy is
+    // a fixed, small (ten-entry) constant, so this stays cheap.
+    Promise.all(
+      BUSINESS_CATEGORIES.map(async (c) => ({
+        category: c.slug,
+        counts: await businessCityCounts(c.slug),
+      })),
+    ),
+    db.business.findMany({
+      where: { status: "active" },
+      select: { slug: true, updatedAt: true },
+    }),
+  ]);
 
   return [
     {
@@ -37,6 +54,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: l.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.6,
+    })),
+    // Directory hub, then category and category/city browse pages — these are
+    // the indexable directory URLs; /directory/search is noindexed, same
+    // rule as /search above.
+    { url: `${BASE}/directory`, changeFrequency: "daily" as const, priority: 0.8 },
+    ...BUSINESS_CATEGORIES.map((c) => ({
+      url: `${BASE}/directory/${c.slug}`,
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
+    ...categoryCityCounts.flatMap(({ category, counts }) =>
+      Object.entries(counts)
+        .filter(([, count]) => count >= 1)
+        .map(([city]) => ({
+          url: `${BASE}/directory/${category}/${city}`,
+          changeFrequency: "daily" as const,
+          priority: 0.6,
+        })),
+    ),
+    ...activeBusinesses.map((b) => ({
+      url: `${BASE}/biz/${b.slug}`,
+      lastModified: b.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
     })),
   ];
 }

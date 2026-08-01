@@ -21,6 +21,12 @@ export async function Header() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <Link
+            href="/directory"
+            className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
+          >
+            Directory
+          </Link>
           {session?.user ? (
             <UserMenu name={session.user.name ?? "Account"} unread={unread} />
           ) : (
@@ -41,9 +47,18 @@ export async function Header() {
       </div>
 
       {/* On mobile the search bar drops to its own row so the logo and CTA keep
-          their space. */}
-      <div className="border-t border-line px-4 py-2 sm:hidden">
-        <SearchBar variant="compact" />
+          their space. The Directory link rides along here too, compact, since
+          the desktop copy above is hidden at this breakpoint. */}
+      <div className="flex items-center gap-2 border-t border-line px-4 py-2 sm:hidden">
+        <div className="min-w-0 flex-1">
+          <SearchBar variant="compact" />
+        </div>
+        <Link
+          href="/directory"
+          className="shrink-0 rounded-btn px-2 py-2 text-xs font-medium text-ink-muted hover:text-ink"
+        >
+          Directory
+        </Link>
       </div>
     </header>
   );
