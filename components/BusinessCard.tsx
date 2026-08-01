@@ -33,7 +33,9 @@ export function BusinessCard({ business }: { business: BusinessRow }) {
         </div>
 
         <div className="p-3">
-          <h3 className="flex items-center gap-1">
+          {/* h2, not h3: browse pages place cards directly under the page h1,
+              and an h1→h3 skip fails the heading-order accessibility audit. */}
+          <h2 className="flex items-center gap-1">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
               {business.name}
             </span>
@@ -52,7 +54,7 @@ export function BusinessCard({ business }: { business: BusinessRow }) {
                 />
               </svg>
             )}
-          </h3>
+          </h2>
           <p className="mt-1 truncate text-xs text-ink-muted">
             {getBusinessCategoryLabel(business.category)}
             {subcategoryLabel ? ` · ${subcategoryLabel}` : ""}
