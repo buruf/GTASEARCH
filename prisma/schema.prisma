@@ -232,3 +232,35 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+
+model Business {
+  id            String   @id @default(cuid())
+  slug          String   @unique // kebab(name)-citySlug, collision-suffixed
+  name          String
+  description   String // neutral, factual
+  category      String // BUSINESS_CATEGORIES slug
+  subcategory   String?
+  city          String // existing CITIES slug
+  neighbourhood String?
+  address       String
+  phone         String?
+  website       String?
+  hours         String? // freeform display text, e.g. "Mon–Fri 9–6"
+  images        String[]
+  status        String   @default("active") // "active" | "hidden"
+  source        String // "open-data" | "curated" | "self"
+  verified      Boolean  @default(false) // 5B sets via claiming
+  claimedById   String? // 5B
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Full-text search column. Prisma cannot express `tsvector` or the
+  // GENERATED ALWAYS AS expression, so the migration is hand-edited to create it
+  // as a generated column (name weight A, description weight B) with a GIN
+  // index. Declared here as Unsupported so Prisma does not report schema drift
+  // and try to drop it.
+  searchVector Unsupported("tsvector")?
+
+  @@index([category, city, status])
+  @@index([city, status])
+}

@@ -1,6 +1,22 @@
 import Link from "next/link";
 import { CATEGORIES } from "@/lib/categories";
 import { CITIES } from "@/lib/cities";
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+
+// Hardcoded (not counts) so the footer stays a sync, static server component —
+// querying counts on every page render would be wasteful for a footer link
+// list. Ordered so seeded categories lead; revisit as curation fills the rest.
+const FOOTER_DIRECTORY_SLUGS = [
+  "restaurants",
+  "automotive",
+  "education",
+  "shopping",
+  "pets",
+  "health",
+];
+const FOOTER_DIRECTORY_CATEGORIES = FOOTER_DIRECTORY_SLUGS.map((slug) =>
+  BUSINESS_CATEGORIES.find((c) => c.slug === slug),
+).filter((c): c is (typeof BUSINESS_CATEGORIES)[number] => Boolean(c));
 
 const POPULAR_SEARCHES = [
   { label: "Sofas in Toronto", href: "/search?q=sofa&city=toronto" },
@@ -15,7 +31,7 @@ export function Footer() {
   return (
     <footer className="mt-12 border-t border-line bg-surface-alt">
       <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
           <div>
             <h2 className="text-sm font-semibold text-ink">GTASearch</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-muted">
@@ -33,6 +49,19 @@ export function Footer() {
               {CATEGORIES.slice(0, 6).map((c) => (
                 <li key={c.slug}>
                   <Link href={`/search?category=${c.slug}`} className="hover:text-brand">
+                    {c.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Directory</h2>
+            <ul className="mt-3 space-y-2 text-sm text-ink-muted">
+              {FOOTER_DIRECTORY_CATEGORIES.map((c) => (
+                <li key={c.slug}>
+                  <Link href={`/directory/${c.slug}`} className="hover:text-brand">
                     {c.label}
                   </Link>
                 </li>
