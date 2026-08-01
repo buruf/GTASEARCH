@@ -3,8 +3,12 @@
 // Self-provisioning: beforeAll creates every business these tests rely on
 // under slugs prefixed `vitest-biz-${STAMP}-`, and afterAll deletes every row
 // with that prefix. Nothing here depends on a directory import having run —
-// as of Phase 5A Task 3 the production Business table holds no rows, and
-// these tests must pass against an empty directory.
+// these tests are written to pass whether the Business table is empty (as
+// it was as of Phase 5A Task 3) or holds real imported rows (as of Phase 5A
+// Task 6's Toronto open-data import, source:"open-data"). Assertions either
+// use >= against fixture-only floors, or — where a "this category has zero
+// rows" case is being tested — pick a category that's absent from both the
+// fixtures above AND from the Task 6 import mapping.
 //
 // These cover the behaviour that cannot be verified any other way: the
 // generated tsvector column, trigram matching, and the verified-first
@@ -231,11 +235,16 @@ describe("browse, profile, counts, similar", () => {
     const torontoCategories = await businessCategoryCountsForCity("toronto");
     expect(torontoCategories["health"]).toBeGreaterThanOrEqual(3);
     expect(torontoCategories["home-services"]).toBeGreaterThanOrEqual(2);
-    // No fixture (or, per the module comment, any production row as of this
-    // writing) uses "restaurants" in Toronto — the key must be absent
-    // entirely (not present with count 0), which is what lets the
-    // category/city page's cross-links stay count-gated.
-    expect(torontoCategories).not.toHaveProperty("restaurants");
+    // No fixture, and no category the Phase 5A Task 6 open-data import maps
+    // to (restaurants/automotive/pets/education/shopping — see
+    // scripts/toronto-licence-mapping.ts), uses "professional" in Toronto —
+    // the key must be absent entirely (not present with count 0), which is
+    // what lets the category/city page's cross-links stay count-gated.
+    // ("restaurants" was the original example here, back when the
+    // production Business table held no rows at all; Task 6 has since
+    // imported real Toronto restaurants, so that category is no longer a
+    // valid "guaranteed absent" example.)
+    expect(torontoCategories).not.toHaveProperty("professional");
   });
 
   it("similar excludes self and matches category+city", async () => {
