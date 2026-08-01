@@ -5,7 +5,7 @@ export function slugifyName(name: string): string {
   return name
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "") // fold accents: Café → Cafe
-    .replace(/['']/g, "") // remove apostrophes
+    .replace(/['’]/g, "") // remove apostrophes (straight and curly)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")

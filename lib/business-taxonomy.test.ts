@@ -33,6 +33,9 @@ describe("makeBusinessSlug", () => {
   it("handles unicode and squeezes punctuation runs", () => {
     expect(makeBusinessSlug("Café  Crème!!!", "vaughan")).toBe("cafe-creme-vaughan");
   });
+  it("handles curly apostrophes", () => {
+    expect(makeBusinessSlug("O'Brien's Pub", "toronto")).toBe("obriens-pub-toronto");
+  });
   it("caps the name part at 60 chars", () => {
     const s = makeBusinessSlug("x".repeat(100), "ajax");
     expect(s.length).toBeLessThanOrEqual(60 + 1 + "ajax".length);
