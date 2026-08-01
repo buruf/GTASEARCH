@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SearchBar } from "@/components/SearchBar";
+import { TorontoSkyline } from "@/components/TorontoSkyline";
 import { CategoryGrid } from "@/components/CategoryGrid";
 import { ListingGrid } from "@/components/ListingCard";
 import { categoryCounts, featuredListings, recentListings } from "@/lib/search";
@@ -23,11 +24,15 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="bg-brand-50">
-        <div className="mx-auto max-w-5xl px-4 py-10 text-center sm:py-14">
+      {/* Sky gradient + illustrated Toronto skyline. Text sits on the light
+          upper sky, so contrast stays WCAG-clean; the search card is solid
+          white and reads fine over the buildings. */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#D9EAF8] via-[#E9F3FB] to-[#F4F9FD]">
+        <TorontoSkyline className="pointer-events-none absolute bottom-0 left-0 h-36 w-full sm:h-52" />
+        <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-10 text-center sm:pb-32 sm:pt-14">
           <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-4xl">
             Buy, sell, and find anything in the{" "}
-            <span className="text-brand">Greater Toronto Area</span>
+            <span className="text-brand-dark">Greater Toronto Area</span>
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-ink-muted sm:text-base">
             Thousands of local listings across Toronto, Mississauga, Brampton,
