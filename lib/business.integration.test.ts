@@ -18,6 +18,7 @@ import {
   browseBusinesses,
   businessCountsByCategory,
   businessCityCounts,
+  businessCategoryCountsForCity,
   similarBusinesses,
 } from "@/lib/business";
 import { db } from "@/lib/db";
@@ -222,6 +223,19 @@ describe("browse, profile, counts, similar", () => {
     const healthCities = await businessCityCounts("health");
     expect(healthCities["toronto"]).toBeGreaterThanOrEqual(3);
     expect(healthCities["mississauga"]).toBeGreaterThanOrEqual(1);
+  });
+
+  it("category counts for a city reflect fixtures and omit unused categories", async () => {
+    // Toronto fixtures: 3 health (Lakeshore Dental, Downtown Dental,
+    // Downtown Physio) + 2 home-services (Toronto Plumbing Pros, GTA Electric Co).
+    const torontoCategories = await businessCategoryCountsForCity("toronto");
+    expect(torontoCategories["health"]).toBeGreaterThanOrEqual(3);
+    expect(torontoCategories["home-services"]).toBeGreaterThanOrEqual(2);
+    // No fixture (or, per the module comment, any production row as of this
+    // writing) uses "restaurants" in Toronto — the key must be absent
+    // entirely (not present with count 0), which is what lets the
+    // category/city page's cross-links stay count-gated.
+    expect(torontoCategories).not.toHaveProperty("restaurants");
   });
 
   it("similar excludes self and matches category+city", async () => {

@@ -6,27 +6,19 @@ import { DirectoryPagination } from "../../_components/DirectoryPagination";
 import {
   BUSINESS_PAGE_SIZE,
   browseBusinesses,
+  businessCategoryCountsForCity,
   businessCityCounts,
 } from "@/lib/business";
 import {
-  BUSINESS_CATEGORIES,
   getBusinessCategory,
+  getBusinessCategoryLabel,
   getBusinessSubcategoryLabel,
 } from "@/lib/business-categories";
 import { getCity, getCityLabel } from "@/lib/cities";
+import { CHIP_ACTIVE, CHIP_INACTIVE, parsePage } from "../../shared";
 
 type Params = { category: string; city: string };
 type SearchParams = { sub?: string; page?: string };
-
-const CHIP_BASE =
-  "inline-block rounded-btn border px-3 py-1.5 text-xs font-medium";
-const CHIP_ACTIVE = `${CHIP_BASE} border-brand bg-brand text-white`;
-const CHIP_INACTIVE = `${CHIP_BASE} border-line bg-surface text-ink-muted hover:border-brand hover:text-brand`;
-
-function parsePage(raw: string | undefined): number {
-  const n = Number(raw ?? "1");
-  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
-}
 
 /** Resolves the validated ?sub value (or undefined) for a given category. */
 function resolveSub(
@@ -61,10 +53,17 @@ export async function generateMetadata({
   const sub = resolveSub(category, searchParams.sub);
   const h1 = buildHeading(category, city.label, sub);
 
+  // Canonical must match what generated the title: a valid ?sub changes both
+  // the H1 and the title, so it stays in the canonical too. ?page is
+  // deliberately left out — paginated pages canonicalizing to page 1 is
+  // standard and fine.
+  const base = `/directory/${category.slug}/${city.slug}`;
+  const canonical = sub ? `${base}?sub=${sub}` : base;
+
   return {
     title: `${h1} | GTASearch Directory`,
     description: `Find ${h1.toLowerCase()} — addresses, phone numbers and websites on GTASearch.`,
-    alternates: { canonical: `/directory/${category.slug}/${city.slug}` },
+    alternates: { canonical },
   };
 }
 
@@ -83,8 +82,9 @@ export default async function DirectoryCategoryCityPage({
   const page = parsePage(searchParams.page);
   const h1 = buildHeading(category, city.label, sub);
 
-  const [cityCounts, { rows, total }] = await Promise.all([
+  const [cityCounts, categoryCounts, { rows, total }] = await Promise.all([
     businessCityCounts(category.slug),
+    businessCategoryCountsForCity(city.slug),
     browseBusinesses(category.slug, city.slug, page, sub),
   ]);
 
@@ -105,6 +105,13 @@ export default async function DirectoryCategoryCityPage({
   // businesses in it.
   const otherCities = Object.entries(cityCounts)
     .filter(([slug, count]) => slug !== city.slug && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+  // Cross-link: other categories in this city with at least one business —
+  // count-gated so crawlers don't get walked into empty category×city pages
+  // the sitemap deliberately excludes.
+  const otherCategories = Object.entries(categoryCounts)
+    .filter(([slug, count]) => slug !== category.slug && count > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return (
@@ -199,23 +206,25 @@ export default async function DirectoryCategoryCityPage({
         </section>
       )}
 
-      <section className="mt-8" aria-labelledby="directory-other-categories-heading">
-        <h2
-          id="directory-other-categories-heading"
-          className="text-sm font-bold text-ink"
-        >
-          Other categories in {city.label}
-        </h2>
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {BUSINESS_CATEGORIES.filter((c) => c.slug !== category.slug).map((c) => (
-            <li key={c.slug}>
-              <Link href={`/directory/${c.slug}/${city.slug}`} className={CHIP_INACTIVE}>
-                {c.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {otherCategories.length > 0 && (
+        <section className="mt-8" aria-labelledby="directory-other-categories-heading">
+          <h2
+            id="directory-other-categories-heading"
+            className="text-sm font-bold text-ink"
+          >
+            Other categories in {city.label}
+          </h2>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {otherCategories.map(([slug, count]) => (
+              <li key={slug}>
+                <Link href={`/directory/${slug}/${city.slug}`} className={CHIP_INACTIVE}>
+                  {getBusinessCategoryLabel(slug)} ({count})
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

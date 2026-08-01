@@ -10,19 +10,10 @@ import {
 } from "@/lib/business";
 import { getBusinessCategory } from "@/lib/business-categories";
 import { getCityLabel } from "@/lib/cities";
+import { CHIP_ACTIVE, CHIP_INACTIVE, parsePage } from "../shared";
 
 type Params = { category: string };
 type SearchParams = { sub?: string; page?: string };
-
-const CHIP_BASE =
-  "inline-block rounded-btn border px-3 py-1.5 text-xs font-medium";
-const CHIP_ACTIVE = `${CHIP_BASE} border-brand bg-brand text-white`;
-const CHIP_INACTIVE = `${CHIP_BASE} border-line bg-surface text-ink-muted hover:border-brand hover:text-brand`;
-
-function parsePage(raw: string | undefined): number {
-  const n = Number(raw ?? "1");
-  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
-}
 
 export async function generateMetadata({
   params,

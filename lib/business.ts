@@ -291,6 +291,20 @@ export async function businessCityCounts(
   return Object.fromEntries(rows.map((r) => [r.city, r._count._all]));
 }
 
+/** Category counts within a city, for the category/city browse page's
+ *  "other categories in this city" cross-links — keeps those links off of
+ *  empty category×city pages that the sitemap deliberately excludes. */
+export async function businessCategoryCountsForCity(
+  city: string,
+): Promise<Record<string, number>> {
+  const rows = await db.business.groupBy({
+    by: ["category"],
+    where: { status: "active", city },
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.category, r._count._all]));
+}
+
 /** Directory hub "Recently added" strip: newest active businesses, newest
  *  first. Query builder, not raw SQL — no text matching is involved. */
 export async function newestBusinesses(limit = 8): Promise<BusinessRow[]> {
