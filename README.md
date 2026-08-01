@@ -21,7 +21,14 @@ is `shouldNotify` on `sendMessage`. Reports are reviewed via Prisma Studio
 (`Report` table) until an admin console exists; set `ADMIN_EMAIL` to get
 an email per report.
 
-**Phase 3B (current): money** — Stripe boost purchases (Top $4.99/7d,
+**Phase 4: admin console** — `/admin` (owner only): overview stats, a
+reports queue with dismiss/remove, and all-status listing search with
+takedown and restore. Activation: set `ADMIN_EMAIL` in Vercel to your
+registered email and redeploy; until then no admin surface exists
+anywhere (signed-in non-admins get 404s, never a "forbidden"). Entirely
+email-free.
+
+**Phase 3B: money** — Stripe boost purchases (Top $4.99/7d,
 Featured $9.99/14d, Super $14.99/30d; publish-first-then-pay; webhook is
 the only writer of boost state, replay-safe via the unique `stripeId`,
 atomic payment+apply transaction), the nightly cron
