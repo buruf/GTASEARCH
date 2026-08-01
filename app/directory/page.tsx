@@ -16,15 +16,55 @@ export const metadata: Metadata = {
 
 // Chip labels are the marquee subcategory for each linked category page —
 // resolved ambiguity from the Phase 5A plan: chips deep-link to the parent
-// category page, not a subcategory filter.
+// category page, not a subcategory filter. Curated for a mature, evenly
+// filled directory; today's DB is heavily skewed (restaurants/automotive
+// dominant, several categories still empty), so these are filtered against
+// live counts below — an empty chip would just dead-end the user on a "no
+// businesses found" page.
 const POPULAR_CHIPS = [
-  { label: "Dentists", href: "/directory/health" },
-  { label: "Plumbers", href: "/directory/home-services" },
-  { label: "Pizza", href: "/directory/restaurants" },
-  { label: "Hair Salons", href: "/directory/beauty" },
-  { label: "Auto Repair", href: "/directory/automotive" },
-  { label: "Real Estate", href: "/directory/professional" },
+  { label: "Dentists", category: "health" },
+  { label: "Plumbers", category: "home-services" },
+  { label: "Pizza", category: "restaurants" },
+  { label: "Hair Salons", category: "beauty" },
+  { label: "Auto Repair", category: "automotive" },
+  { label: "Real Estate", category: "professional" },
 ];
+
+/**
+ * Filters POPULAR_CHIPS down to categories that actually have businesses,
+ * then tops up from any other non-empty category (by count, so the busiest
+ * still-unrepresented categories surface first) until at least 4 chips
+ * remain — or fewer, if the DB genuinely doesn't have 4 non-empty categories
+ * yet. Top-up chips use the category's own label since they have no
+ * pre-curated marquee subcategory.
+ */
+function popularChips(
+  counts: Record<string, number>,
+): { label: string; href: string }[] {
+  const survivors = POPULAR_CHIPS.filter(
+    (chip) => (counts[chip.category] ?? 0) > 0,
+  );
+  const chips = survivors.map((chip) => ({
+    label: chip.label,
+    href: `/directory/${chip.category}`,
+  }));
+
+  if (chips.length >= 4) return chips;
+
+  const usedSlugs = new Set(survivors.map((chip) => chip.category));
+  const topUp = BUSINESS_CATEGORIES.filter(
+    (c) => !usedSlugs.has(c.slug) && (counts[c.slug] ?? 0) > 0,
+  )
+    .sort(
+      (a, b) =>
+        (counts[b.slug] ?? 0) - (counts[a.slug] ?? 0) ||
+        a.label.localeCompare(b.label),
+    )
+    .slice(0, 4 - chips.length)
+    .map((c) => ({ label: c.label, href: `/directory/${c.slug}` }));
+
+  return [...chips, ...topUp];
+}
 
 export default async function DirectoryHubPage() {
   const [counts, recent] = await Promise.all([
@@ -112,7 +152,7 @@ export default async function DirectoryHubPage() {
           </form>
 
           <ul className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            {POPULAR_CHIPS.map((chip) => (
+            {popularChips(counts).map((chip) => (
               <li key={chip.href}>
                 <Link
                   href={chip.href}

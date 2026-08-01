@@ -23,6 +23,7 @@ import {
   businessCountsByCategory,
   businessCityCounts,
   businessCategoryCountsForCity,
+  businessSubcategoryCounts,
   similarBusinesses,
 } from "@/lib/business";
 import { db } from "@/lib/db";
@@ -100,6 +101,12 @@ const FIXTURES = [
 ] as const;
 
 beforeAll(async () => {
+  // Clears strays left behind by any crashed previous run, under any stamp —
+  // not just this run's PREFIX — before creating this run's fixtures.
+  await db.business.deleteMany({
+    where: { slug: { startsWith: "vitest-biz-" } },
+  });
+
   const base = {
     description:
       "Integration test fixture for business directory behaviour. Not a real business.",
@@ -245,6 +252,28 @@ describe("browse, profile, counts, similar", () => {
     // imported real Toronto restaurants, so that category is no longer a
     // valid "guaranteed absent" example.)
     expect(torontoCategories).not.toHaveProperty("professional");
+  });
+
+  it("subcategory counts reflect fixtures and omit unused subcategories", async () => {
+    // Health fixtures: 3 dentists (Lakeshore Dental, Downtown Dental,
+    // Mississauga Family Dentistry) + 1 physiotherapy (Downtown Physio).
+    const healthCounts = await businessSubcategoryCounts("health");
+    expect(healthCounts["dentists"]).toBeGreaterThanOrEqual(3);
+    expect(healthCounts["physiotherapy"]).toBeGreaterThanOrEqual(1);
+    // No fixture (or real data) uses this health subcategory — key must be
+    // absent entirely, which is what lets the browse pages' chips stay
+    // count-gated.
+    expect(healthCounts).not.toHaveProperty("walk-in-clinics");
+
+    // City-scoped: only the 2 Toronto dentists + 1 Toronto physiotherapy
+    // fixture should count; the Mississauga dentist must not.
+    const torontoHealthCounts = await businessSubcategoryCounts(
+      "health",
+      "toronto",
+    );
+    expect(torontoHealthCounts["dentists"]).toBeGreaterThanOrEqual(2);
+    expect(torontoHealthCounts["physiotherapy"]).toBeGreaterThanOrEqual(1);
+    expect(torontoHealthCounts).not.toHaveProperty("walk-in-clinics");
   });
 
   it("similar excludes self and matches category+city", async () => {

@@ -8,6 +8,7 @@ import {
   browseBusinesses,
   businessCategoryCountsForCity,
   businessCityCounts,
+  businessSubcategoryCounts,
 } from "@/lib/business";
 import {
   getBusinessCategory,
@@ -82,13 +83,22 @@ export default async function DirectoryCategoryCityPage({
   const page = parsePage(searchParams.page);
   const h1 = buildHeading(category, city.label, sub);
 
-  const [cityCounts, categoryCounts, { rows, total }] = await Promise.all([
-    businessCityCounts(category.slug),
-    businessCategoryCountsForCity(city.slug),
-    browseBusinesses(category.slug, city.slug, page, sub),
-  ]);
+  const [cityCounts, categoryCounts, subCounts, { rows, total }] =
+    await Promise.all([
+      businessCityCounts(category.slug),
+      businessCategoryCountsForCity(city.slug),
+      businessSubcategoryCounts(category.slug, city.slug),
+      browseBusinesses(category.slug, city.slug, page, sub),
+    ]);
 
   const totalPages = Math.max(1, Math.ceil(total / BUSINESS_PAGE_SIZE));
+
+  // Count-gated: only show a subcategory chip when it has businesses in this
+  // city, except the currently-active one (kept visible even at zero so the
+  // user can always un-select it).
+  const visibleSubcategories = category.subcategories.filter(
+    (s) => (subCounts[s.slug] ?? 0) > 0 || s.slug === sub,
+  );
 
   const buildHref = (overrides: { sub?: string | undefined; page?: number }): string => {
     const effectiveSub = "sub" in overrides ? overrides.sub : sub;
@@ -155,7 +165,7 @@ export default async function DirectoryCategoryCityPage({
               All {category.label}
             </Link>
           </li>
-          {category.subcategories.map((s) => (
+          {visibleSubcategories.map((s) => (
             <li key={s.slug}>
               <Link
                 href={buildHref({ sub: s.slug, page: 1 })}

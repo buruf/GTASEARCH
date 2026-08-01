@@ -305,6 +305,32 @@ export async function businessCategoryCountsForCity(
   return Object.fromEntries(rows.map((r) => [r.category, r._count._all]));
 }
 
+/** Subcategory counts within a category (and optional city), for the
+ *  category / category+city browse pages' subcategory chips — count-gated so
+ *  a chip never deep-links to a filter combination with zero results. Rows
+ *  with a null subcategory (not every imported business has one) are
+ *  skipped rather than counted under some placeholder key. */
+export async function businessSubcategoryCounts(
+  category: string,
+  city?: string,
+): Promise<Record<string, number>> {
+  const rows = await db.business.groupBy({
+    by: ["subcategory"],
+    where: {
+      status: "active",
+      category,
+      ...(city ? { city } : {}),
+      subcategory: { not: null },
+    },
+    _count: { _all: true },
+  });
+  return Object.fromEntries(
+    rows
+      .filter((r) => r.subcategory !== null)
+      .map((r) => [r.subcategory as string, r._count._all]),
+  );
+}
+
 /** Directory hub "Recently added" strip: newest active businesses, newest
  *  first. Query builder, not raw SQL — no text matching is involved. */
 export async function newestBusinesses(limit = 8): Promise<BusinessRow[]> {

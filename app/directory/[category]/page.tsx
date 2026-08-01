@@ -7,6 +7,7 @@ import {
   BUSINESS_PAGE_SIZE,
   browseBusinesses,
   businessCityCounts,
+  businessSubcategoryCounts,
 } from "@/lib/business";
 import { getBusinessCategory } from "@/lib/business-categories";
 import { getCityLabel } from "@/lib/cities";
@@ -46,12 +47,20 @@ export default async function DirectoryCategoryPage({
     : undefined;
   const page = parsePage(searchParams.page);
 
-  const [cityCounts, { rows, total }] = await Promise.all([
+  const [cityCounts, subCounts, { rows, total }] = await Promise.all([
     businessCityCounts(category.slug),
+    businessSubcategoryCounts(category.slug),
     browseBusinesses(category.slug, undefined, page, sub),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / BUSINESS_PAGE_SIZE));
+
+  // Count-gated: only show a subcategory chip when it has businesses, except
+  // the currently-active one (kept visible even at zero so the user can
+  // always un-select it).
+  const visibleSubcategories = category.subcategories.filter(
+    (s) => (subCounts[s.slug] ?? 0) > 0 || s.slug === sub,
+  );
 
   const buildHref = (overrides: { sub?: string | undefined; page?: number }): string => {
     const effectiveSub = "sub" in overrides ? overrides.sub : sub;
@@ -104,7 +113,7 @@ export default async function DirectoryCategoryPage({
               All {category.label}
             </Link>
           </li>
-          {category.subcategories.map((s) => (
+          {visibleSubcategories.map((s) => (
             <li key={s.slug}>
               <Link
                 href={buildHref({ sub: s.slug, page: 1 })}
