@@ -82,6 +82,53 @@ const paths: Record<string, React.ReactNode> = {
       <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17 14.2a5.5 5.5 0 0 1 3.5 4.8" />
     </>
   ),
+
+  // Business directory categories (Phase 5A).
+  utensils: (
+    <>
+      <path d="M7 3v6a1.5 1.5 0 0 0 3 0V3" />
+      <path d="M8.5 9v12" />
+      <path d="M16.5 3c-1.8 1.6-2.5 4-2.5 6.3 0 2 1 3.2 2.5 3.2v8.5" />
+    </>
+  ),
+  cross: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M12 8v8M8 12h8" />
+    </>
+  ),
+  wrench: (
+    <>
+      <path d="M14.5 6.5a3.5 3.5 0 0 0 4.6 4.6l-8 8a2.1 2.1 0 0 1-3-3z" />
+      <path d="m5.5 4 2.5 2.5M4 8.5 7 6" />
+    </>
+  ),
+  scissors: (
+    <>
+      <circle cx="7" cy="6" r="2.2" />
+      <circle cx="7" cy="18" r="2.2" />
+      <path d="M8.7 7.5 19 17M8.7 16.5 19 6.5" />
+    </>
+  ),
+  bag: (
+    <>
+      <path d="M6 8h12l-1 12H7z" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M12 6.5c-1.6-1-4-1.5-8-1.5v13c4 0 6.4.5 8 1.5V6.5z" />
+      <path d="M12 6.5c1.6-1 4-1.5 8-1.5v13c-4 0-6.4.5-8 1.5V6.5z" />
+    </>
+  ),
+  dumbbell: (
+    <>
+      <rect x="2.5" y="9" width="3" height="6" rx="1" />
+      <rect x="18.5" y="9" width="3" height="6" rx="1" />
+      <path d="M6 9v6M18 9v6M6 12h12" />
+    </>
+  ),
 };
 
 export function CategoryIcon({ name, className = "h-6 w-6" }: Props) {

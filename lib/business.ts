@@ -291,6 +291,17 @@ export async function businessCityCounts(
   return Object.fromEntries(rows.map((r) => [r.city, r._count._all]));
 }
 
+/** Directory hub "Recently added" strip: newest active businesses, newest
+ *  first. Query builder, not raw SQL — no text matching is involved. */
+export async function newestBusinesses(limit = 8): Promise<BusinessRow[]> {
+  return db.business.findMany({
+    where: { status: "active" },
+    select: BROWSE_SELECT,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: limit,
+  });
+}
+
 /** Business profile page: same category and city, excluding the business
  *  itself. Verified first, then name — same ordering rule as everywhere else
  *  in this module. */
