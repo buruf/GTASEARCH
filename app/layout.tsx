@@ -16,11 +16,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL("https://gtasearch.com"),
   title: {
-    default: "GTASearch — Buy, sell and find anything in the Greater Toronto Area",
+    default:
+      "GTASearch — GTA Business Directory & Local Classifieds",
     template: "%s | GTASearch",
   },
   description:
-    "Free classifieds for the Greater Toronto Area. Browse cars, real estate, jobs, electronics, furniture and more across Toronto, Mississauga, Brampton, Markham and the wider GTA.",
+    "Find local businesses across the Greater Toronto Area — restaurants, health, home services, beauty, automotive and more — plus free classifieds to buy and sell in Toronto, Mississauga, Brampton, Markham and the wider GTA.",
   openGraph: {
     type: "website",
     locale: "en_CA",

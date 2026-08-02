@@ -73,12 +73,6 @@ export default async function BusinessProfilePage({
           </li>
           <li aria-hidden="true">/</li>
           <li>
-            <Link href="/directory" className="hover:text-brand">
-              Directory
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
             <Link
               href={`/directory/${business.category}`}
               className="hover:text-brand"

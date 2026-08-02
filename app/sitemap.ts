@@ -33,6 +33,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "hourly",
       priority: 1,
     },
+    // The classifieds section landing page (the pre-flip homepage).
+    {
+      url: `${BASE}/classifieds`,
+      changeFrequency: "hourly" as const,
+      priority: 0.8,
+    },
     { url: `${BASE}/terms`, changeFrequency: "yearly" as const, priority: 0.2 },
     { url: `${BASE}/privacy`, changeFrequency: "yearly" as const, priority: 0.2 },
     { url: `${BASE}/about`, changeFrequency: "yearly" as const, priority: 0.3 },
@@ -55,10 +61,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.6,
     })),
-    // Directory hub, then category and category/city browse pages — these are
-    // the indexable directory URLs; /directory/search is noindexed, same
-    // rule as /search above.
-    { url: `${BASE}/directory`, changeFrequency: "daily" as const, priority: 0.8 },
+    // Directory category and category/city browse pages — these are the
+    // indexable directory URLs; the hub itself is now the homepage (first
+    // entry above; /directory 308s there) and /directory/search is
+    // noindexed, same rule as /search above.
     ...BUSINESS_CATEGORIES.map((c) => ({
       url: `${BASE}/directory/${c.slug}`,
       changeFrequency: "daily" as const,

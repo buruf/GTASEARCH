@@ -86,12 +86,6 @@ export default async function DirectoryCategoryPage({
             </Link>
           </li>
           <li aria-hidden="true">/</li>
-          <li>
-            <Link href="/directory" className="hover:text-brand">
-              Directory
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
           <li className="text-ink" aria-current="page">
             {category.label}
           </li>
