@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { unreadCountFor } from "@/lib/messages";
 import { Logo } from "@/components/Logo";
-import { SearchBar } from "@/components/SearchBar";
+import { HeaderSearch } from "@/components/HeaderSearch";
 import { UserMenu } from "@/components/UserMenu";
 
 export async function Header() {
@@ -16,9 +16,7 @@ export async function Header() {
           <Logo />
         </Link>
 
-        <div className="hidden flex-1 sm:block">
-          <SearchBar variant="compact" />
-        </div>
+        <HeaderSearch variant="desktop" />
 
         <div className="ml-auto flex items-center gap-2">
           <Link
@@ -50,9 +48,7 @@ export async function Header() {
           their space. The Directory link rides along here too, compact, since
           the desktop copy above is hidden at this breakpoint. */}
       <div className="flex items-center gap-2 border-t border-line px-4 py-2 sm:hidden">
-        <div className="min-w-0 flex-1">
-          <SearchBar variant="compact" />
-        </div>
+        <HeaderSearch variant="mobile" />
         <Link
           href="/directory"
           className="shrink-0 rounded-btn px-2 py-2 text-xs font-medium text-ink-muted hover:text-ink"
