@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { BusinessRow } from "@/lib/business";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
+  getBusinessCategory,
   getBusinessCategoryLabel,
   getBusinessSubcategoryLabel,
 } from "@/lib/business-categories";
@@ -26,8 +28,17 @@ export function BusinessCard({ business }: { business: BusinessRow }) {
               className="object-cover"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-brand-50 text-3xl font-bold text-brand">
-              {business.name.charAt(0).toUpperCase()}
+            // Imported open-data rows have no photos (municipal licence
+            // records carry none — real images arrive via curation or 5B
+            // owner claiming), so the placeholder is the category's icon:
+            // clearly a placeholder, and it reads badly for none of the
+            // names — the old giant first-letter looked broken on numbered
+            // companies like "1001095107 Ontario".
+            <div className="flex h-full items-center justify-center bg-brand-50">
+              <CategoryIcon
+                name={getBusinessCategory(business.category)?.icon ?? "briefcase"}
+                className="h-14 w-14 text-brand opacity-40"
+              />
             </div>
           )}
         </div>
