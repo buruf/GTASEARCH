@@ -5,14 +5,17 @@ import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 
 // Hardcoded (not counts) so the footer stays a sync, static server component —
 // querying counts on every page render would be wasteful for a footer link
-// list. Ordered so seeded categories lead; revisit as curation fills the rest.
+// list. Only categories that actually hold businesses belong here: a footer
+// link to an empty browse page is a dead end for readers and a thin page for
+// crawlers. Revisit as curation fills the rest (health, home-services,
+// professional and fitness are still empty).
 const FOOTER_DIRECTORY_SLUGS = [
   "restaurants",
-  "automotive",
+  "beauty",
   "education",
+  "automotive",
   "shopping",
   "pets",
-  "health",
 ];
 const FOOTER_DIRECTORY_CATEGORIES = FOOTER_DIRECTORY_SLUGS.map((slug) =>
   BUSINESS_CATEGORIES.find((c) => c.slug === slug),

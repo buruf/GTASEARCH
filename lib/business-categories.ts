@@ -72,6 +72,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { slug: "nail-salons", label: "Nail Salons" },
       { slug: "spas", label: "Spas" },
       { slug: "massage", label: "Massage" },
+      { slug: "tattoo-piercing", label: "Tattoo & Piercing" },
     ],
   },
   {

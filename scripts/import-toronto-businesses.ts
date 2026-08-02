@@ -64,6 +64,7 @@ import { db } from "@/lib/db";
 import { makeBusinessSlug } from "@/lib/business-slug";
 import { getBusinessCategory, getBusinessCategoryLabel, getBusinessSubcategoryLabel } from "@/lib/business-categories";
 import { LICENCE_MAPPING } from "./toronto-licence-mapping";
+import { cleanAddress, cleanName, isPlausibleStreetAddress } from "./import-helpers";
 
 const CKAN_BASE = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/";
 const RESOURCE_ID = "169e90ba-3ae0-43dd-8b2f-919e87002f50";
@@ -145,46 +146,13 @@ async function datastoreSearch(offset: number, limit: number): Promise<Datastore
 
 // ------------------------------------------------------------ cleaning
 
-/** Trailing corporate suffixes stripped for display, e.g. "FOO BAR LTD" -> "FOO BAR". */
-const CORP_SUFFIX_RE = /[\s,]+(LTD|LIMITED|INC|INCORPORATED|CORP|CORPORATION)\.?$/i;
-
-function stripCorporateSuffix(raw: string): string {
-  let name = raw.trim();
-  // Loop in case of stacked suffixes ("... INC LTD").
-  let prev: string;
-  do {
-    prev = name;
-    name = name.replace(CORP_SUFFIX_RE, "").trim();
-  } while (name !== prev && name.length > 0);
-  return name || raw.trim();
-}
-
-/** Title-cases a name while leaving punctuation-adjacent letters (e.g. "A&W") capitalized too. */
-function titleCase(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/(^|[\s\-/&(])([a-z])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase());
-}
-
-function cleanName(operatingName: string): string {
-  return titleCase(stripCorporateSuffix(operatingName));
-}
-
 /** Requires a street-number-led line 1 and a Toronto line 2 — guards against
  *  blank/placeholder addresses and out-of-city licensees (this dataset
  *  licenses some businesses located outside Toronto). */
 function isPlausibleTorontoAddress(line1: string | null, line2: string | null): boolean {
-  if (!line1 || !line2) return false;
-  const l1 = line1.trim();
-  const l2 = line2.trim();
-  if (l1.length < 5) return false;
-  if (!/^\d+[a-zA-Z0-9]*\s+\S/.test(l1)) return false; // starts with a street number
-  if (!/^TORONTO\b/i.test(l2)) return false;
+  if (!isPlausibleStreetAddress(line1)) return false;
+  if (!line2 || !/^TORONTO\b/i.test(line2.trim())) return false;
   return true;
-}
-
-function cleanAddress(line1: string): string {
-  return line1.trim().replace(/\s+/g, " ");
 }
 
 // --------------------------------------------------------------- slugging
