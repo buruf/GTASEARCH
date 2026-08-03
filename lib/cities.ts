@@ -129,6 +129,62 @@ export const CITIES: City[] = [
     label: "Barrie",
     neighbourhoods: ["Allandale", "Painswick", "Holly", "East Bayfield"],
   },
+  // The remaining York Region municipalities, added when the York Region
+  // business directory brought real listings for each of them. Without these
+  // the importer would have discarded thousands of genuine GTA businesses for
+  // having a city we simply had not listed yet.
+  {
+    slug: "aurora",
+    label: "Aurora",
+    neighbourhoods: ["Aurora Village", "Bayview Wellington", "Aurora Highlands"],
+  },
+  {
+    slug: "whitchurch-stouffville",
+    label: "Whitchurch-Stouffville",
+    neighbourhoods: ["Stouffville", "Ballantrae", "Musselman's Lake"],
+  },
+  {
+    slug: "georgina",
+    label: "Georgina",
+    neighbourhoods: ["Keswick", "Sutton", "Jackson's Point", "Pefferlaw"],
+  },
+  {
+    slug: "east-gwillimbury",
+    label: "East Gwillimbury",
+    neighbourhoods: ["Holland Landing", "Sharon", "Mount Albert", "Queensville"],
+  },
+  {
+    slug: "king",
+    label: "King",
+    neighbourhoods: ["King City", "Nobleton", "Schomberg"],
+  },
+  // Durham Region municipalities, added alongside the Durham business
+  // directory import for the same reason as the York additions above.
+  {
+    slug: "whitby",
+    label: "Whitby",
+    neighbourhoods: ["Brooklin", "Downtown Whitby", "Rolling Acres", "Port Whitby"],
+  },
+  {
+    slug: "clarington",
+    label: "Clarington",
+    neighbourhoods: ["Bowmanville", "Courtice", "Newcastle", "Orono"],
+  },
+  {
+    slug: "uxbridge",
+    label: "Uxbridge",
+    neighbourhoods: ["Uxbridge Village", "Goodwood", "Zephyr"],
+  },
+  {
+    slug: "scugog",
+    label: "Scugog",
+    neighbourhoods: ["Port Perry", "Caesarea", "Blackstock"],
+  },
+  {
+    slug: "brock",
+    label: "Brock",
+    neighbourhoods: ["Beaverton", "Cannington", "Sunderland"],
+  },
 ];
 
 const CITY_BY_SLUG = new Map(CITIES.map((c) => [c.slug, c]));

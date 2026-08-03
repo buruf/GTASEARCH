@@ -16,8 +16,11 @@ import {
 import {
   NAICS_MAPPING,
   HOME_BASED_RISK,
+  PREMISES_CATEGORIES,
   hasCommercialSignal,
+  hasUnitDesignator,
   lookupNaics,
+  looksLikePersonalName,
   looksResidential,
 } from "@/scripts/naics-mapping";
 import { getBusinessCategory } from "@/lib/business-categories";
@@ -176,6 +179,48 @@ describe("NAICS mapping", () => {
     expect(hasCommercialSignal(null, "10-19")).toBe(true);
     expect(hasCommercialSignal(null, "1 to 4")).toBe(false);
     expect(hasCommercialSignal(null, null)).toBe(false);
+  });
+
+  it("treats a real person's name as personal information", () => {
+    expect(looksLikePersonalName("Stephanie Van Mil")).toBe(true);
+    expect(looksLikePersonalName("Michael J. Walsh")).toBe(true);
+  });
+
+  it("does NOT mistake two-word trading names for people", () => {
+    // An earlier draft flagged all of these and would have hidden 1,235 real
+    // businesses — the given-name requirement is what fixed it.
+    for (const trading of [
+      "Fade Room",
+      "Waxon Waxbar",
+      "Scoot Ink",
+      "Learner Drivers",
+      "Timeless Ink",
+      "Urban Curls",
+      "Glow Beauty Bar",
+    ]) {
+      expect(looksLikePersonalName(trading), `"${trading}" flagged as a person`).toBe(false);
+    }
+  });
+
+  it("relies on the category guard for trading names that start with a given name", () => {
+    // "Tim Hortons" is indistinguishable from a person by name alone, and the
+    // name test does flag it. What protects it is that restaurants are
+    // premises by nature, so the gate is never applied to that category.
+    expect(looksLikePersonalName("Tim Hortons")).toBe(true);
+    expect(PREMISES_CATEGORIES.has("restaurants")).toBe(true);
+    expect(PREMISES_CATEGORIES.has("automotive")).toBe(true);
+    expect(PREMISES_CATEGORIES.has("shopping")).toBe(true);
+  });
+
+  it("does not flag names carrying a business word", () => {
+    expect(looksLikePersonalName("Robert Smith Dentistry")).toBe(false);
+    expect(looksLikePersonalName("2223722 Ontario Inc")).toBe(false);
+  });
+
+  it("reads unit designators as evidence of commercial premises", () => {
+    expect(hasUnitDesignator("45 WICKSTEED AVE, UNIT-280-1")).toBe(true);
+    expect(hasUnitDesignator("415 YONGE ST, Suite 102")).toBe(true);
+    expect(hasUnitDesignator("11 Spruce Street")).toBe(false);
   });
 
   it("spots residential street types", () => {

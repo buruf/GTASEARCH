@@ -148,6 +148,73 @@ export const HOME_BASED_RISK = new Set([
   "561730", "561720", "484210", "238990", "236118",
 ]);
 
+/**
+ * Categories whose businesses are premises-based by nature. A restaurant or a
+ * tyre shop is not somebody's living room, so the personal-name gate below is
+ * not applied to them — which is what keeps two-word trading names like
+ * "Tim Hortons" from being mistaken for a private individual.
+ */
+export const PREMISES_CATEGORIES = new Set(["restaurants", "shopping", "automotive"]);
+
+/** Words that mark a name as a trading name rather than a person's name. */
+const BUSINESS_WORD =
+  /\b(inc|ltd|limited|corp|corporation|co|llp|llc|group|clinic|dental|dentistry|denture|medicine|medical|health|law|legal|notary|salon|spa|barber|nails?|hair|studio|shop|store|centre|center|caf[eé]|restaurant|pizza|grill|bakery|kitchen|auto|motors|garage|collision|tire|realty|real|estate|insurance|associates?|services?|solutions?|consulting|contracting|construction|plumbing|electric|hvac|roofing|landscaping|cleaning|academy|school|daycare|childcare|learning|tutoring|fitness|gym|yoga|pilates|martial|pet|veterinary|animal|tax|accounting|bookkeeping|agency|enterprises|holdings|management|therapy|therapeutics|wellness|massage|physio|chiro|optical|optometry|pharmacy|drugs?|market|foods?|catering|travel|design|photography|studios)\b/i;
+
+/**
+ * Common given names. A "two capitalised words with no business word" test is
+ * hopeless on its own — it flags "Fade Room", "Waxon Waxbar" and "Scoot Ink"
+ * as people, and an earlier draft of this gate would have hidden 1,235
+ * perfectly real businesses. Requiring the FIRST token to be a recognisable
+ * given name is what separates "Stephanie Van Mil" from "Scoot Ink".
+ *
+ * The list is deliberately conservative: missing a name means we publish
+ * something we might have held back, which is caught by the other conditions
+ * (no website, residential street). A short list that is right beats a long
+ * list that guesses.
+ */
+const GIVEN_NAMES = new Set(
+  `aaron adam adrian ahmed aisha alan albert alex alexander alexandra ali alice amanda amir amy ana andrea andrew angela ann anna anne anthony antonio april arthur ashley barbara ben benjamin bernard beth betty bill bob bonnie brad brandon brenda brian bruce bryan carl carlos carmen carol caroline catherine cathy charles cheryl chris christina christine christopher cindy claire claudia colin connie craig crystal cynthia dale dan daniel danielle danny daphne darlene darren dave david dawn dean debbie deborah debra denis denise dennis derek diana diane dina domenic don donald donna dora doreen doris dorothy doug douglas dylan ed eddie edward eileen elaine eleanor elena elizabeth ellen emily emma eric erica erin ernest esther eugene eva evelyn faith farah fatima felix fernando florence frank fred frederick gail gary gene george gerald geraldine gina giovanni gloria gord gordon grace graham grant greg gregory guy hannah harold harry heather hector helen henry holly hong hugh ian ida irene irina isabel ivan jack jackie jacob jacqueline james jamie jan jane janet janice jason jean jeanne jeff jeffrey jennifer jenny jeremy jerry jessica jill jim jo joan joanne jody joe joel john johnny jon jonathan jose joseph josephine joshua joy joyce juan judith judy julia julie justin karen karim kate katherine kathleen kathy katie kay keith kelly ken kenneth kevin kim kimberly kirk kristen kyle larry laura lauren laurie lawrence lee leo leonard leslie li lida linda lisa lloyd lois loretta lori lorna lorraine louis louise lucy luigi luis lynn lynne madeline mai marc marcel marco margaret maria marian marie marilyn mario marion mark marlene martha martin marty mary maureen maurice max maya megan mel melanie melissa michael michele michelle mike mildred milton mina miranda mohamed mohammed monica monique nancy naomi natalie natasha nathan neil nelson nicholas nicole nina noel norma norman olga oliver olivia omar oscar pam pamela pat patricia patrick paul paula pauline pedro peggy peter phil philip phyllis rachel rafael ralph ramona randy raymond rebecca regina rene renee ricardo richard rick rita rob robert roberta robin rod roger roland ron ronald rosa rose rosemary roxanne roy ruby russell ruth ryan sabrina sally salvatore sam samantha samir samuel sandra sandy sara sarah scott sean shannon sharon shawn sheila shelley sherry shirley simon sonia sophia stacey stan stanley stella stephanie stephen steve steven stuart sue susan suzanne sylvia tammy tanya ted teresa terry theresa thomas tiffany tim timothy tina todd tom tommy tony tracy travis trevor troy valerie vanessa vera veronica vicki victor victoria vincent violet virginia vivian walter wanda warren wayne wendy wesley william willie wilson yolanda yvonne zachary zoe`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/** Unit / suite designators — a strong hint of a plaza or office, not a house. */
+const UNIT_DESIGNATOR = /\b(unit|ste|suite|apt|#|fl|flr|floor|bsmt|lower level|main floor)\b|#\s*\d/i;
+
+export function hasUnitDesignator(address: string): boolean {
+  return UNIT_DESIGNATOR.test(address);
+}
+
+/**
+ * True when a listing name looks like a private individual rather than a
+ * trading name — "Stephanie Van Mil", not "Van Mil Massage Therapy".
+ *
+ * Regional directories register sole proprietors under their own name at their
+ * own home: Durham's lists a registered massage therapist by name on a
+ * residential street with no website, and publishing that is publishing
+ * somebody's home address. York Region's licence explicitly does not cover
+ * Personal Information.
+ *
+ * A true result is not on its own a reason to withhold — callers combine it
+ * with the absence of a website and of a unit number, so a practice operating
+ * from real commercial premises still gets listed.
+ */
+export function looksLikePersonalName(name: string): boolean {
+  const n = name.trim();
+  if (!n) return false;
+  if (BUSINESS_WORD.test(n)) return false;
+  if (/[0-9&@/]/.test(n)) return false; // numbered co, "A & B", "X/Y" — not a bare person
+  const words = n.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 3) return false;
+  // Every token must read as a name particle: letters, apostrophes, hyphens,
+  // or an initial like "A." — anything else means it is a trading name.
+  const allNameLike = words.every((w) =>
+    /^[A-Za-zÀ-ÖØ-öø-ÿ]([A-Za-zÀ-ÖØ-öø-ÿ'’-]*)\.?$/.test(w),
+  );
+  if (!allNameLike) return false;
+  return GIVEN_NAMES.has(words[0].toLowerCase().replace(/[.'’-]/g, ""));
+}
+
 /** Street types that are almost always residential subdivisions. */
 const RESIDENTIAL_STREET = /\b(CRES|CRESCENT|CRT|COURT|PLACE|TERR|TERRACE|MEWS|GATE|GDNS|GARDENS)\b/i;
 

@@ -46,8 +46,11 @@ import {
 import { CITIES } from "@/lib/cities";
 import {
   HOME_BASED_RISK,
+  PREMISES_CATEGORIES,
   hasCommercialSignal,
+  hasUnitDesignator,
   lookupNaics,
+  looksLikePersonalName,
   looksResidential,
 } from "./naics-mapping";
 import {
@@ -126,10 +129,63 @@ const SOURCES: SourceAdapter[] = [
       employees: str(a.TOTAL_EMPLOYEE_GROUPED),
     }),
   },
+  {
+    key: "york",
+    label: "York Region Business Directory (2024)",
+    attribution:
+      "Contains public sector information made available under The Regional Municipality of York's Open Data Licence",
+    url: "https://services1.arcgis.com/GzvOwaQBbX7KLiuG/arcgis/rest/services/Business_Directory_2024/FeatureServer/1",
+    // Regional feed: nine municipalities, so the city comes off each record.
+    citySlug: null,
+    map: (a) => ({
+      name: str(a.NAME) ?? "",
+      address: [str(a.FULL_ADDRESS), str(a.UNIT_NUM) ? `Unit ${str(a.UNIT_NUM)}` : null]
+        .filter(Boolean)
+        .join(", "),
+      city: (str(a.MUNICIPALITY) ?? "").toLowerCase().replace(/\s+/g, "-"),
+      naics: (a.PRIM_NAICS as string | number | null) ?? null,
+      phone: str(a.PHONE_NO),
+      website: str(a.WEBSITE),
+      employees: str(a.EMPLOYEE_RANGE),
+    }),
+  },
+  {
+    key: "durham",
+    label: "Durham Region Business Directory",
+    attribution:
+      "Contains public sector information made available under The Regional Municipality of Durham's Open Data Licence",
+    url: "https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer/11",
+    citySlug: null,
+    map: (a) => ({
+      name: str(a.Business_Name) ?? "",
+      // Durham stores the address in parts rather than one line.
+      address: [
+        [str(a.Street_Number), str(a.Street_Name), str(a.Street_Type), str(a.Street_Direction)]
+          .filter(Boolean)
+          .join(" "),
+        str(a.Unit_Number) ? `Unit ${str(a.Unit_Number)}` : null,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      city: (str(a.Municipality) ?? "").toLowerCase().replace(/\s+/g, "-"),
+      naics: (a.NAICSCode as string | number | null) ?? null,
+      phone: str(a.Telephone_Number),
+      website: str(a.Web_Address),
+      // Durham publishes no employee-count field, so home-based-risk trades
+      // here qualify on a published website alone.
+      employees: null,
+    }),
+  },
 ];
 
-/** Only licence-verified sources run by default. */
-const DEFAULT_SOURCES = ["mississauga", "brampton"];
+/**
+ * Only sources whose licence text has actually been read run by default.
+ * All four are the same UK-OGL-derived family: worldwide, royalty-free,
+ * explicitly permitting commercial use and derivative works, with attribution
+ * encouraged (York, Durham) or required (Brampton, CC BY 4.0). Every one is
+ * credited on /data-sources.
+ */
+const DEFAULT_SOURCES = ["mississauga", "brampton", "york", "durham"];
 
 const CITY_SLUGS = new Set(CITIES.map((c) => c.slug));
 
@@ -208,9 +264,12 @@ async function main() {
     skippedUnmapped: 0,
     skippedBadAddress: 0,
     skippedHomeBased: 0,
+    skippedPersonalName: 0,
     skippedConflict: 0,
     skippedOverLimit: 0,
+    skippedUnknownCity: 0,
   };
+  const unknownCities = new Map<string, number>();
   const histogram = new Map<string, number>();
   const perCity = new Map<string, number>();
 
@@ -256,9 +315,23 @@ async function main() {
         continue;
       }
 
-      // Privacy gate: trades registered at what looks like a house are only
-      // published with corroborating evidence of commercial premises.
+      // Privacy gates. Two ways a record can really be a private individual
+      // at home: a trade licensed to a sole operator, or a sole proprietor
+      // registered under their own personal name. Both need corroborating
+      // evidence of commercial premises before we publish an address.
       const naicsDigits = String(raw.naics ?? "").replace(/\D/g, "");
+      const personalName =
+        !PREMISES_CATEGORIES.has(mapping.category) && looksLikePersonalName(raw.name);
+      if (personalName) {
+        // A person's name is only withheld when nothing else says "premises":
+        // no website, and no unit/suite number in the address.
+        const premises =
+          hasCommercialSignal(raw.website, raw.employees) || hasUnitDesignator(raw.address);
+        if (!premises || looksResidential(raw.address)) {
+          counters.skippedPersonalName++;
+          continue;
+        }
+      }
       if (HOME_BASED_RISK.has(naicsDigits)) {
         const ok = hasCommercialSignal(raw.website, raw.employees) && !looksResidential(raw.address);
         if (!ok) {
@@ -269,7 +342,11 @@ async function main() {
 
       const citySlug = source.citySlug ?? raw.city;
       if (!CITY_SLUGS.has(citySlug)) {
-        counters.skippedBadAddress++;
+        // Counted separately from bad addresses: an unknown city means our
+        // CITIES list is missing a municipality the region actually serves,
+        // which is a fixable gap rather than a junk record.
+        counters.skippedUnknownCity++;
+        unknownCities.set(citySlug, (unknownCities.get(citySlug) ?? 0) + 1);
         continue;
       }
 
@@ -375,6 +452,12 @@ async function main() {
   for (const [c, n] of perCity) console.log(`  ${c}: ${n}`);
   console.log("\nCounters:");
   for (const [k, v] of Object.entries(counters)) console.log(`  ${k.padEnd(20)} ${v}`);
+  if (unknownCities.size) {
+    console.log("\nUnknown cities (add to lib/cities.ts to capture these):");
+    for (const [c, n] of [...unknownCities].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${String(n).padStart(5)}  ${c || "(blank)"}`);
+    }
+  }
 
   if (dryRun) {
     console.log("\nDRY RUN — nothing written. Sample:");

@@ -66,6 +66,30 @@ const SOURCES: Source[] = [
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
     portalUrl: "https://geohub.brampton.ca/datasets/brampton::brampton-business-directory",
   },
+  {
+    name: "York Region — Business Directory (2024)",
+    covers:
+      "Markham, Vaughan, Richmond Hill, Newmarket, Aurora, Whitchurch-Stouffville, Georgina, East Gwillimbury and King",
+    what: "Businesses across every category, classified by NAICS industry code.",
+    licence: "York Region Open Data Licence",
+    licenceUrl:
+      "https://www.arcgis.com/sharing/rest/content/items/78cc02388af248c0b7a30eda6adfade0/data",
+    portalUrl: "https://insights-york.opendata.arcgis.com/datasets/york::business-directory-2024",
+  },
+  {
+    name: "Durham Region — Business Directory",
+    covers: "Oshawa, Whitby, Ajax, Pickering, Clarington, Uxbridge, Scugog and Brock",
+    what: "Businesses across every category, classified by NAICS industry code.",
+    licence: "Durham Region Open Data Licence",
+    licenceUrl: "https://opendata.durham.ca/pages/terms-of-use",
+    portalUrl: "https://opendata.durham.ca/datasets/DurhamRegion::business-directory",
+  },
+];
+
+// Credit statements these two licences ask for by name when credit is given.
+const CREDIT_STATEMENTS = [
+  "Contains public sector information made available under The Regional Municipality of York's Open Data Licence.",
+  "Contains public sector information made available under The Regional Municipality of Durham's Open Data Licence.",
 ];
 
 export default function DataSourcesPage() {
@@ -112,6 +136,26 @@ export default function DataSourcesPage() {
           </li>
         ))}
       </ul>
+
+      <h2 className="mt-10 text-lg font-bold text-ink">Attribution</h2>
+      <ul className="mt-2 space-y-2 text-sm text-ink-muted">
+        {CREDIT_STATEMENTS.map((c) => (
+          <li key={c}>{c}</li>
+        ))}
+      </ul>
+
+      <h2 className="mt-10 text-lg font-bold text-ink">
+        What we leave out on purpose
+      </h2>
+      <p className="mt-2 text-sm text-ink-muted">
+        These feeds include sole proprietors who registered under their own
+        name at their own home. We do not publish those: a listing whose name
+        is a person&apos;s name is only shown when the record also shows signs
+        of commercial premises, such as a website or a unit number in a plaza
+        or office building. We also never import health-inspection results,
+        infractions or fines, even though some of the source datasets contain
+        them.
+      </p>
 
       <h2 className="mt-10 text-lg font-bold text-ink">Corrections</h2>
       <p className="mt-2 text-sm text-ink-muted">
