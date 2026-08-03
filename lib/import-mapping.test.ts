@@ -6,7 +6,20 @@ import {
   pickPrimaryServiceType,
   refineSubcategory,
 } from "@/scripts/toronto-health-mapping";
-import { cleanName, isPlausibleStreetAddress } from "@/scripts/import-helpers";
+import {
+  cleanName,
+  isPlausibleStreetAddress,
+  normalizeWebsite,
+  preferOperatingName,
+  repairMojibake,
+} from "@/scripts/import-helpers";
+import {
+  NAICS_MAPPING,
+  HOME_BASED_RISK,
+  hasCommercialSignal,
+  lookupNaics,
+  looksResidential,
+} from "@/scripts/naics-mapping";
 import { getBusinessCategory } from "@/lib/business-categories";
 
 describe("Toronto licence-category mapping", () => {
@@ -100,5 +113,74 @@ describe("import helpers", () => {
     expect(isPlausibleStreetAddress("UNIT 4")).toBe(false);
     expect(isPlausibleStreetAddress("")).toBe(false);
     expect(isPlausibleStreetAddress(null)).toBe(false);
+  });
+
+  it("repairs CP437 mojibake without touching legitimate punctuation", () => {
+    expect(repairMojibake("Caf‚ Vilamor")).toBe("Café Vilamor");
+    expect(repairMojibake("Gar‡on")).toBe("Garçon");
+    // En dashes and ellipses are real in business names — must survive.
+    expect(repairMojibake("Foo – Bar")).toBe("Foo – Bar");
+    expect(repairMojibake("Wait…")).toBe("Wait…");
+  });
+
+  it("prefers the operating name over a numbered holding company", () => {
+    expect(preferOperatingName("2223722 Ontario Inc. O/A Kate's Bakery")).toBe("Kate's Bakery");
+    expect(preferOperatingName("Plain Business Name")).toBe("Plain Business Name");
+    expect(cleanName("2223722 ONTARIO INC. O/A KATE'S BAKERY")).toBe("Kate's Bakery");
+  });
+
+  it("gives bare website values a scheme so they are not relative links", () => {
+    expect(normalizeWebsite("clasicobarber.com")).toBe("https://clasicobarber.com");
+    expect(normalizeWebsite("www.example.ca/page")).toBe("https://www.example.ca/page");
+    expect(normalizeWebsite("https://already.com")).toBe("https://already.com");
+    expect(normalizeWebsite("n/a")).toBeNull();
+    expect(normalizeWebsite(null)).toBeNull();
+  });
+});
+
+describe("NAICS mapping", () => {
+  it("every entry resolves to a real category and subcategory", () => {
+    for (const [code, entry] of Object.entries(NAICS_MAPPING)) {
+      const category = getBusinessCategory(entry.category);
+      expect(category, `NAICS ${code} -> unknown category "${entry.category}"`).toBeDefined();
+      if (entry.subcategory) {
+        const found = category!.subcategories.some((s) => s.slug === entry.subcategory);
+        expect(found, `NAICS ${code} -> unknown subcategory "${entry.subcategory}"`).toBe(true);
+      }
+    }
+  });
+
+  it("keys are digits only, so longest-prefix lookup can match them", () => {
+    for (const code of Object.keys(NAICS_MAPPING)) {
+      expect(/^\d{4,6}$/.test(code), `"${code}" is not a 4-6 digit NAICS code`).toBe(true);
+    }
+  });
+
+  it("looks up exact codes and falls back to the industry-group prefix", () => {
+    expect(lookupNaics(621210)).toEqual({ category: "health", subcategory: "dentists" });
+    expect(lookupNaics("812111")).toEqual({ category: "beauty", subcategory: "barbers" });
+    // 722519 is not enumerated; the 7225 group is.
+    expect(lookupNaics("722519")).toEqual({ category: "restaurants" });
+    expect(lookupNaics("339999")).toBeNull();
+    expect(lookupNaics(null)).toBeNull();
+  });
+
+  it("every home-based-risk code is actually mapped", () => {
+    for (const code of HOME_BASED_RISK) {
+      expect(NAICS_MAPPING[code], `${code} flagged risky but not mapped`).toBeDefined();
+    }
+  });
+
+  it("admits a trade only with evidence of commercial premises", () => {
+    expect(hasCommercialSignal("https://acme-plumbing.ca", "1 to 4")).toBe(true);
+    expect(hasCommercialSignal(null, "10-19")).toBe(true);
+    expect(hasCommercialSignal(null, "1 to 4")).toBe(false);
+    expect(hasCommercialSignal(null, null)).toBe(false);
+  });
+
+  it("spots residential street types", () => {
+    expect(looksResidential("4 JUNIPER CRES")).toBe(true);
+    expect(looksResidential("12 SOMEWHERE COURT")).toBe(true);
+    expect(looksResidential("3480 PLATINUM DR")).toBe(false);
   });
 });

@@ -5,7 +5,11 @@ import { BusinessGrid } from "@/components/BusinessCard";
 import { ListingGrid } from "@/components/ListingCard";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 import { CITIES } from "@/lib/cities";
-import { businessCountsByCategory, newestBusinesses } from "@/lib/business";
+import {
+  businessCityCounts,
+  businessCountsByCategory,
+  newestBusinesses,
+} from "@/lib/business";
 import { recentListings } from "@/lib/search";
 import { currentUserId } from "@/lib/auth";
 import { savedIdsFor } from "@/lib/saved";
@@ -84,8 +88,9 @@ const CATEGORY_TONE: Record<string, string> = {
 };
 
 export default async function HomePage() {
-  const [counts, recent, recentAds, viewerId] = await Promise.all([
+  const [counts, cityCounts, recent, recentAds, viewerId] = await Promise.all([
     businessCountsByCategory(),
+    businessCityCounts(),
     newestBusinesses(8),
     recentListings(4),
     currentUserId(),
@@ -96,6 +101,12 @@ export default async function HomePage() {
 
   const totalBusinesses = Object.values(counts).reduce((sum, n) => sum + n, 0);
   const liveCategories = Object.values(counts).filter((n) => n > 0).length;
+  const citiesWithBusinesses = CITIES.map((city) => ({
+    city,
+    count: cityCounts[city.slug] ?? 0,
+  }))
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count);
 
   return (
     <>
@@ -211,8 +222,19 @@ export default async function HomePage() {
               categories
             </li>
             <li>
-              Sourced from{" "}
-              <strong className="font-semibold text-ink">City of Toronto open data</strong>
+              <strong className="font-semibold text-ink">
+                {citiesWithBusinesses.length}
+              </strong>{" "}
+              cities
+            </li>
+            <li>
+              Built from{" "}
+              <Link
+                href="/data-sources"
+                className="font-semibold text-brand underline-offset-2 hover:underline"
+              >
+                GTA municipal open data
+              </Link>
             </li>
           </ul>
 
@@ -269,6 +291,33 @@ export default async function HomePage() {
             </ul>
           </div>
         </section>
+
+        {/* Browse by city. Count-gated like every other cross-link on the
+            site: a city with no businesses is not shown at all rather than
+            offered as a link to an empty page. Grows on its own as regional
+            imports land. */}
+        {citiesWithBusinesses.length > 0 && (
+          <section aria-labelledby="cities-heading" className="mt-12">
+            <h2 id="cities-heading" className="text-lg font-bold text-ink sm:text-xl">
+              Browse by city
+            </h2>
+            <ul className="mt-4 flex flex-wrap gap-3">
+              {citiesWithBusinesses.map(({ city, count }) => (
+                <li key={city.slug}>
+                  <Link
+                    href={`/directory/search?city=${city.slug}`}
+                    className="flex items-baseline gap-2 rounded-card border border-line bg-surface px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-card-hover"
+                  >
+                    <span className="text-sm font-semibold text-ink">{city.label}</span>
+                    <span className="text-xs text-ink-faint">
+                      {count.toLocaleString("en-CA")}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {recent.length > 0 && (
           <section aria-labelledby="directory-recent-heading" className="mt-12">

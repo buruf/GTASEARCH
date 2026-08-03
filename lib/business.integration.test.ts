@@ -260,10 +260,15 @@ describe("browse, profile, counts, similar", () => {
     const healthCounts = await businessSubcategoryCounts("health");
     expect(healthCounts["dentists"]).toBeGreaterThanOrEqual(3);
     expect(healthCounts["physiotherapy"]).toBeGreaterThanOrEqual(1);
-    // No fixture (or real data) uses this health subcategory — key must be
-    // absent entirely, which is what lets the browse pages' chips stay
-    // count-gated.
-    expect(healthCounts).not.toHaveProperty("walk-in-clinics");
+    // The real point of this test: a subcategory with no businesses must be
+    // ABSENT rather than present with a zero, which is what lets the browse
+    // pages' chips stay count-gated. Asserted as the invariant over whatever
+    // keys come back — naming a specific "guaranteed empty" subcategory kept
+    // breaking as real imports filled the taxonomy in (walk-in-clinics was
+    // empty until the regional NAICS import landed ten of them).
+    for (const [sub, n] of Object.entries(healthCounts)) {
+      expect(n, `"${sub}" came back with a non-positive count`).toBeGreaterThan(0);
+    }
 
     // City-scoped: only the 2 Toronto dentists + 1 Toronto physiotherapy
     // fixture should count; the Mississauga dentist must not.
@@ -273,7 +278,9 @@ describe("browse, profile, counts, similar", () => {
     );
     expect(torontoHealthCounts["dentists"]).toBeGreaterThanOrEqual(2);
     expect(torontoHealthCounts["physiotherapy"]).toBeGreaterThanOrEqual(1);
-    expect(torontoHealthCounts).not.toHaveProperty("walk-in-clinics");
+    for (const [sub, n] of Object.entries(torontoHealthCounts)) {
+      expect(n, `"${sub}" came back with a non-positive count`).toBeGreaterThan(0);
+    }
   });
 
   it("similar excludes self and matches category+city", async () => {

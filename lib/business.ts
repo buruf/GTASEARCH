@@ -279,13 +279,15 @@ export async function businessCountsByCategory(): Promise<
   return Object.fromEntries(rows.map((r) => [r.category, r._count._all]));
 }
 
-/** City counts within a category, for the category browse page's city filter. */
+/** City counts within a category, for the category browse page's city filter.
+ *  Omit the category for directory-wide totals per city — what the homepage's
+ *  "browse by city" section needs. */
 export async function businessCityCounts(
-  category: string,
+  category?: string,
 ): Promise<Record<string, number>> {
   const rows = await db.business.groupBy({
     by: ["city"],
-    where: { status: "active", category },
+    where: { status: "active", ...(category ? { category } : {}) },
     _count: { _all: true },
   });
   return Object.fromEntries(rows.map((r) => [r.city, r._count._all]));

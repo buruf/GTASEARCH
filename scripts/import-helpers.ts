@@ -24,8 +24,57 @@ export function titleCase(raw: string): string {
     .replace(/(^|[\s\-/&(])([a-z])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
+/**
+ * Repairs a specific corruption in the regional directory feeds: accented
+ * characters were stored as CP437 bytes and later decoded as CP1252, so "Café"
+ * arrives as "Caf‚". Only the substitutions that are never legitimate inside a
+ * word are repaired, and only when the character sits against a letter —
+ * en dashes, ellipses and curly quotes really do appear in business names, so
+ * those are left alone even though they are part of the same corruption
+ * family. Better to leave a rare "à" broken than to mangle "Foo – Bar".
+ */
+const MOJIBAKE: Record<string, string> = {
+  "‚": "é", // CP437 0x82
+  "‡": "ç", // 0x87
+  "Š": "è", // 0x8A
+  "Œ": "î", // 0x8C
+  "ƒ": "â", // 0x83
+};
+
+export function repairMojibake(raw: string): string {
+  return raw.replace(/(\p{L})([‚‡ŠŒƒ])/gu, (_m, letter: string, bad: string) =>
+    letter + (MOJIBAKE[bad] ?? bad),
+  );
+}
+
+/**
+ * Numbered holding companies register as "2223722 Ontario Inc. O/A Kate's Town
+ * Talk Bakery" — the half after "O/A" (operating as) is the name on the sign
+ * and the only half a searcher would recognise.
+ */
+export function preferOperatingName(raw: string): string {
+  const m = raw.match(/\bO\/A\b[.\s:]*(.+)$/i);
+  if (m && m[1].trim().length >= 3) return m[1].trim();
+  return raw;
+}
+
 export function cleanName(operatingName: string): string {
-  return titleCase(stripCorporateSuffix(operatingName));
+  return titleCase(stripCorporateSuffix(repairMojibake(preferOperatingName(operatingName))));
+}
+
+/**
+ * Directory feeds store websites bare ("clasicobarber.com"). Rendered straight
+ * into an href that becomes a same-site relative link, so every one of them
+ * would 404. Adds the scheme, and rejects values that are not plausibly a
+ * host at all.
+ */
+export function normalizeWebsite(raw: string | null): string | null {
+  if (!raw) return null;
+  const v = raw.trim().replace(/\s+/g, "");
+  if (v.length < 4 || !v.includes(".")) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^www\./i.test(v) || /^[\w-]+(\.[\w-]+)+/.test(v)) return `https://${v}`;
+  return null;
 }
 
 export function cleanAddress(line: string): string {

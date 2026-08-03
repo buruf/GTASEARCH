@@ -1,8 +1,9 @@
-// Brand logo: green app-icon tile with a white CN Tower, beside the two-tone
-// wordmark. The tile is inline SVG so it stays crisp at any size with no
-// image request; the wordmark is real text so it uses the site font and
-// scales with the header. app/icon.svg carries the same tile as the favicon —
-// change them together.
+// Brand logo: the CN Tower inside a map pin, beside the two-tone wordmark.
+// The pin silhouette carries the "local / find it here" meaning that a plain
+// rounded tile did not, and the tower keeps it unmistakably Toronto. Kept as
+// one solid shape with knocked-out white detail so it survives being scaled
+// down to a 16px favicon. Inline SVG: crisp at any size, no image request.
+// app/icon.svg carries the same mark — change them together.
 
 export function LogoTile({ className = "h-8 w-8" }: { className?: string }) {
   return (
@@ -12,14 +13,20 @@ export function LogoTile({ className = "h-8 w-8" }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      <rect x="4" y="4" width="64" height="64" rx="14" fill="#2E7D32" />
+      {/* Pin: circular head over a tapered point, drawn as one path so there
+          is no seam where the two meet at small sizes. */}
+      <path
+        d="M36 4a26 26 0 0 0-26 26c0 17.5 20.6 34.4 24.4 37.4a2.5 2.5 0 0 0 3.2 0C41.4 64.4 62 47.5 62 30A26 26 0 0 0 36 4z"
+        fill="#2E7D32"
+      />
+      {/* CN Tower, knocked out in white inside the pin head. */}
       <line
-        x1="36" y1="12" x2="36" y2="20"
+        x1="36" y1="11" x2="36" y2="17"
         stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round"
       />
-      <ellipse cx="36" cy="27" rx="10" ry="4.5" fill="#ffffff" />
-      <rect x="33.5" y="30" width="5" height="26" fill="#ffffff" />
-      <path d="M26 60 L36 48 L46 60 Z" fill="#ffffff" />
+      <ellipse cx="36" cy="23" rx="8.5" ry="3.8" fill="#ffffff" />
+      <rect x="34" y="25.5" width="4" height="21" fill="#ffffff" />
+      <path d="M28.5 49 L36 39 L43.5 49 Z" fill="#ffffff" />
     </svg>
   );
 }
