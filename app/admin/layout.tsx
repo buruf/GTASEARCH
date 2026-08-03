@@ -15,6 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/reports" className={tab}>Reports</Link>
         <Link href="/admin/listings" className={tab}>Listings</Link>
         <Link href="/admin/claims" className={tab}>Claims</Link>
+        <Link href="/admin/reviews" className={tab}>Reviews</Link>
       </div>
       <div className="mt-6">{children}</div>
     </div>

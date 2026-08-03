@@ -143,6 +143,23 @@ export const BusinessProfileSchema = z.object({
   hours: z.string().trim().max(300, "Keep hours under 300 characters").optional().default(""),
 });
 
+export const ReviewSchema = z.object({
+  rating: z.coerce
+    .number()
+    .int("Pick a rating")
+    .min(1, "Pick a rating from 1 to 5")
+    .max(5, "Pick a rating from 1 to 5"),
+  body: z
+    .string()
+    .trim()
+    .min(20, "Tell people a little about your experience — at least 20 characters")
+    .max(2000, "Keep your review under 2000 characters"),
+});
+
+export const OwnerResponseSchema = z.object({
+  response: z.string().trim().max(1000, "Keep your reply under 1000 characters"),
+});
+
 /** Slug → label for "what is your role at this business?" on the claim form. */
 export const CLAIM_ROLES: Record<string, string> = {
   owner: "Owner",

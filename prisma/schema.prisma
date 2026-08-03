@@ -35,6 +35,7 @@ model User {
   ownedBusinesses     Business[]      @relation("BusinessOwner")
   businessClaims      BusinessClaim[] @relation("ClaimSubmitter")
   claimsReviewed      BusinessClaim[] @relation("ClaimReviewer")
+  reviews             Review[]
 
   accounts            Account[]
   sessions            Session[]
@@ -257,6 +258,14 @@ model Business {
 
   claimedBy User?           @relation("BusinessOwner", fields: [claimedById], references: [id], onDelete: SetNull)
   claims    BusinessClaim[]
+  reviews   Review[]
+
+  // Denormalised review aggregates, written ONLY inside the same transaction
+  // as the review that changes them (lib/reviews.ts). Kept on the row so
+  // browse pages can show a rating without an aggregate query per card, and
+  // so a rating can never be displayed without the count beside it.
+  reviewCount Int @default(0)
+  ratingSum   Int @default(0)
 
   // Subscription state. Every business is "free"; "pro" is the paid monthly
   // plan. The Stripe webhook is the ONLY writer of these four fields — the
@@ -278,6 +287,40 @@ model Business {
   @@index([category, city, status])
   @@index([city, status])
   @@index([claimedById])
+}
+
+/// A review written by a signed-in person about a business.
+///
+/// GTASearch never generates, seeds, buys or imports reviews. Every row here
+/// is written by a real account through the review form, which is why there is
+/// no `source` column: there is only one way a review can exist. A directory
+/// that invents its own social proof is worth nothing, and unwinding fake
+/// reviews later is impossible.
+model Review {
+  id         String @id @default(cuid())
+  businessId String
+  userId     String
+
+  rating Int // 1..5, enforced by a CHECK constraint added in the migration
+  body   String
+
+  /// The owner's public reply. Owners may answer but may never edit, hide or
+  /// delete a review — that is the whole point of a review.
+  ownerResponse    String?
+  ownerRespondedAt DateTime?
+
+  status    String   @default("published") // "published" | "hidden" (moderation)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One review per person per business. Re-reviewing edits the existing row,
+  /// so nobody can stack five-star ratings on their own shop or bury a rival.
+  @@unique([businessId, userId])
+  @@index([businessId, status, createdAt])
+  @@index([userId])
 }
 
 /// An owner's request to take control of a Business listing.

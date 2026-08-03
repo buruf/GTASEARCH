@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { BusinessRow } from "@/lib/business";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { Stars } from "@/components/Stars";
+import { averageRating } from "@/lib/reviews";
 import {
   getBusinessCategory,
   getBusinessCategoryLabel,
@@ -73,6 +75,15 @@ export function BusinessCard({ business }: { business: BusinessRow }) {
           {/* Paid placement is disclosed on the card itself. Pro businesses
               sort above others, and a reader has to be able to see that
               without digging for it. */}
+          {business.reviewCount > 0 && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
+              <Stars rating={averageRating(business.ratingSum, business.reviewCount) ?? 0} />
+              <span>
+                {averageRating(business.ratingSum, business.reviewCount)} (
+                {business.reviewCount})
+              </span>
+            </p>
+          )}
           {business.plan === "pro" && (
             <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
               Promoted

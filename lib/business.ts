@@ -36,6 +36,9 @@ export interface BusinessRow {
   verified: boolean;
   /** "free" | "pro" — drives the promoted label and browse ordering. */
   plan: string;
+  /** Denormalised review aggregates (lib/reviews.ts owns the writes). */
+  reviewCount: number;
+  ratingSum: number;
 }
 
 export interface BusinessSearchFilters {
@@ -218,6 +221,8 @@ export async function getBusiness(
       hours: true,
       createdAt: true,
       plan: true,
+      reviewCount: true,
+      ratingSum: true,
       // Drives the "Is this your business?" claim CTA — hidden once owned.
       claimedById: true,
     },
@@ -239,6 +244,8 @@ const BROWSE_SELECT = {
   images: true,
   verified: true,
   plan: true,
+  reviewCount: true,
+  ratingSum: true,
 } as const;
 
 /**

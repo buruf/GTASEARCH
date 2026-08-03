@@ -9,6 +9,11 @@ import {
   getBusinessSubcategoryLabel,
 } from "@/lib/business-categories";
 import { getCityLabel } from "@/lib/cities";
+import { currentUserId } from "@/lib/auth";
+import { averageRating, myReview, reviewsFor } from "@/lib/reviews";
+import { Stars, ratingLabel } from "@/components/Stars";
+import { ReviewForm } from "./reviews/ReviewForm";
+import { OwnerReply } from "./reviews/OwnerReply";
 
 export async function generateMetadata({
   params,
@@ -57,6 +62,15 @@ export default async function BusinessProfilePage({
     business.city,
     4,
   );
+
+  const viewerId = await currentUserId();
+  const isOwner = Boolean(viewerId && business.claimedById === viewerId);
+  const [reviews, mine] = await Promise.all([
+    reviewsFor(business.id),
+    viewerId && !isOwner ? myReview(business.id, viewerId) : Promise.resolve(null),
+  ]);
+  const reviewCount = business.reviewCount;
+  const average = averageRating(business.ratingSum, reviewCount);
 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     `${business.name} ${business.address}`,
@@ -191,6 +205,91 @@ export default async function BusinessProfilePage({
         <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-muted">
           {business.description}
         </p>
+      </section>
+
+      <section aria-labelledby="reviews-heading" className="mt-10">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="reviews-heading" className="text-lg font-bold text-ink">
+            Reviews
+          </h2>
+          {reviewCount > 0 && (
+            <p className="flex items-center gap-2 text-sm text-ink-muted">
+              <Stars rating={average ?? 0} />
+              {/* The count always travels with the average — "5.0" from one
+                  review must never look like "5.0" from two hundred. */}
+              <span className="font-semibold text-ink">{average}</span>
+              <span>
+                from {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+              </span>
+            </p>
+          )}
+        </div>
+        <p className="sr-only">{ratingLabel(average, reviewCount)}</p>
+
+        {reviews.length === 0 && (
+          <p className="mt-3 text-sm text-ink-muted">
+            No reviews yet. Every review here is written by a signed-in visitor
+            — we never add our own.
+          </p>
+        )}
+
+        {reviews.length > 0 && (
+          <ul className="mt-4 space-y-4">
+            {reviews.map((r) => (
+              <li key={r.id} className="rounded-card border border-line bg-surface p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Stars rating={r.rating} />
+                    <span className="text-sm font-semibold text-ink">{r.user.name}</span>
+                  </div>
+                  <span className="text-xs text-ink-faint">
+                    {r.createdAt.toLocaleDateString("en-CA")}
+                    {r.updatedAt.getTime() - r.createdAt.getTime() > 60_000 && " (edited)"}
+                  </span>
+                </div>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-muted">
+                  {r.body}
+                </p>
+
+                {r.ownerResponse && (
+                  <div className="mt-3 rounded-card bg-surface-alt p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                      Response from the owner
+                    </p>
+                    <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">
+                      {r.ownerResponse}
+                    </p>
+                  </div>
+                )}
+
+                {isOwner && (
+                  <OwnerReply reviewId={r.id} slug={business.slug} existing={r.ownerResponse} />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-6">
+          {!viewerId ? (
+            <p className="text-sm text-ink-muted">
+              <Link
+                href={`/auth/signin?callbackUrl=${encodeURIComponent(`/biz/${business.slug}`)}`}
+                className="font-medium text-brand hover:text-brand-dark"
+              >
+                Sign in
+              </Link>{" "}
+              to write a review.
+            </p>
+          ) : isOwner ? (
+            <p className="text-sm text-ink-muted">
+              You manage this business, so you cannot review it. You can reply to
+              reviews above.
+            </p>
+          ) : (
+            <ReviewForm slug={business.slug} existing={mine} />
+          )}
+        </div>
       </section>
 
       {!business.claimedById && (
