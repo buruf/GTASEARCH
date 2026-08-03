@@ -34,6 +34,8 @@ export interface BusinessRow {
   website: string | null;
   images: string[];
   verified: boolean;
+  /** "free" | "pro" — drives the promoted label and browse ordering. */
+  plan: string;
 }
 
 export interface BusinessSearchFilters {
@@ -215,6 +217,7 @@ export async function getBusiness(
       verified: true,
       hours: true,
       createdAt: true,
+      plan: true,
       // Drives the "Is this your business?" claim CTA — hidden once owned.
       claimedById: true,
     },
@@ -235,6 +238,7 @@ const BROWSE_SELECT = {
   website: true,
   images: true,
   verified: true,
+  plan: true,
 } as const;
 
 /**
@@ -261,7 +265,11 @@ export async function browseBusinesses(
     db.business.findMany({
       where,
       select: BROWSE_SELECT,
-      orderBy: [{ verified: "desc" }, { name: "asc" }, { id: "asc" }],
+      // Pro subscribers lead, then verified, then alphabetical, with id as a
+      // deterministic tiebreak so pagination is stable. Paid placement is
+      // always LABELLED on the card — ranking money above relevance without
+      // saying so is the thing that makes directories untrustworthy.
+      orderBy: [{ plan: "desc" }, { verified: "desc" }, { name: "asc" }, { id: "asc" }],
       take: BUSINESS_PAGE_SIZE,
       skip: offset,
     }),

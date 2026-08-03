@@ -117,6 +117,32 @@ export const ReportSchema = z.object({
   details: z.string().trim().max(500, "Keep details under 500 characters").optional().default(""),
 });
 
+/**
+ * What an owner may change on a claimed business.
+ *
+ * Deliberately excludes name, category, address and city. Those are the facts
+ * the directory is built on and are cross-checked against the municipal
+ * source; letting an owner rewrite them turns a verified listing into an
+ * unverifiable one, and makes a claimed listing a way to point somebody
+ * else's address at your business. Corrections to those go through /contact.
+ */
+export const BusinessProfileSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(20, "Write at least a sentence about the business")
+    .max(1500, "Keep the description under 1500 characters"),
+  phone: z.string().trim().max(30).optional().default(""),
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .default("")
+    .refine((v) => v === "" || /^https?:\/\/\S+\.\S+/.test(v), "Enter a full URL starting with https://"),
+  hours: z.string().trim().max(300, "Keep hours under 300 characters").optional().default(""),
+});
+
 /** Slug → label for "what is your role at this business?" on the claim form. */
 export const CLAIM_ROLES: Record<string, string> = {
   owner: "Owner",

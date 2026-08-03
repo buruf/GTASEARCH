@@ -27,6 +27,7 @@ export function UserMenu({ name, unread }: { name: string; unread: number }) {
             )}
           </Link>
           <Link href="/dashboard" className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt" onClick={() => setOpen(false)}>Dashboard</Link>
+          <Link href="/dashboard/business" className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt" onClick={() => setOpen(false)}>My businesses</Link>
           <button type="button" onClick={() => signOut({ callbackUrl: "/" })}
             className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-surface-alt">
             Sign out

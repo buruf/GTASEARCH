@@ -70,6 +70,14 @@ export function BusinessCard({ business }: { business: BusinessRow }) {
             {getBusinessCategoryLabel(business.category)}
             {subcategoryLabel ? ` · ${subcategoryLabel}` : ""}
           </p>
+          {/* Paid placement is disclosed on the card itself. Pro businesses
+              sort above others, and a reader has to be able to see that
+              without digging for it. */}
+          {business.plan === "pro" && (
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+              Promoted
+            </p>
+          )}
           <p className="mt-1 truncate text-xs text-ink-faint">
             {business.address}
           </p>
