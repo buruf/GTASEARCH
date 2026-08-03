@@ -32,6 +32,9 @@ model User {
   sellerConversations Conversation[] @relation("ConversationSeller")
   boostPayments       BoostPayment[]
   reportsFiled        Report[]
+  ownedBusinesses     Business[]      @relation("BusinessOwner")
+  businessClaims      BusinessClaim[] @relation("ClaimSubmitter")
+  claimsReviewed      BusinessClaim[] @relation("ClaimReviewer")
 
   accounts            Account[]
   sessions            Session[]
@@ -249,8 +252,19 @@ model Business {
   images        String[]
   status        String   @default("active") // "active" | "hidden"
   source        String // "open-data" | "curated" | "self"
-  verified      Boolean  @default(false) // 5B sets via claiming
-  claimedById   String? // 5B
+  verified      Boolean  @default(false) // true once a claim is approved
+  claimedById   String? // owner (User.id) once a claim is approved
+
+  claimedBy User?           @relation("BusinessOwner", fields: [claimedById], references: [id], onDelete: SetNull)
+  claims    BusinessClaim[]
+
+  // Subscription state. Every business is "free"; "pro" is the paid monthly
+  // plan. The Stripe webhook is the ONLY writer of these four fields — the
+  // same rule boosts follow (lib/webhook.ts).
+  plan                 String    @default("free") // "free" | "pro"
+  stripeCustomerId     String?
+  stripeSubscriptionId String?   @unique
+  planRenewsAt         DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -263,4 +277,45 @@ model Business {
 
   @@index([category, city, status])
   @@index([city, status])
+  @@index([claimedById])
+}
+
+/// An owner's request to take control of a Business listing.
+///
+/// Reviewed by hand in /admin/claims. Automated proof (a code emailed to the
+/// business's published address, or texted to its published phone) needs an
+/// email/SMS provider the project does not have configured yet; manual review
+/// is what works today and is honest about it. The evidence fields exist so a
+/// reviewer has something concrete to check against the public record.
+model BusinessClaim {
+  id         String @id @default(cuid())
+  businessId String
+  userId     String
+
+  // Snapshot of what the claimant asserted, kept even after review so a
+  // decision can be audited later.
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  roleAtBusiness String // "owner" | "manager" | "employee" | "agency"
+  evidence     String // free text: website, business number, anything checkable
+
+  status     String    @default("pending") // "pending" | "approved" | "rejected"
+  reviewNote String?
+  reviewedAt DateTime?
+  reviewedById String?
+
+  createdAt DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User     @relation("ClaimSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?    @relation("ClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  // One claim per person per business: re-submitting edits the existing row
+  // rather than flooding the review queue. A partial unique index restricting
+  // this to pending rows is added by hand in the migration so a rejected
+  // claimant can try again with better evidence.
+  @@index([status, createdAt])
+  @@index([businessId])
+  @@index([userId])
 }

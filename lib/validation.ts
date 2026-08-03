@@ -116,3 +116,27 @@ export const ReportSchema = z.object({
     .refine((r) => Object.hasOwn(REPORT_REASONS, r), "Pick a reason"),
   details: z.string().trim().max(500, "Keep details under 500 characters").optional().default(""),
 });
+
+/** Slug → label for "what is your role at this business?" on the claim form. */
+export const CLAIM_ROLES: Record<string, string> = {
+  owner: "Owner",
+  manager: "Manager",
+  employee: "Employee",
+  agency: "Agency or representative",
+};
+
+export const ClaimSchema = z.object({
+  contactName: z.string().trim().min(2, "Enter your full name").max(80),
+  contactEmail: z.string().trim().toLowerCase().email("Enter a valid email"),
+  contactPhone: z.string().trim().max(30).optional().default(""),
+  // Object.hasOwn, not `in` — `in` walks the prototype chain and would accept
+  // "constructor" as a role (the ReportSchema lesson).
+  roleAtBusiness: z
+    .string()
+    .refine((r) => Object.hasOwn(CLAIM_ROLES, r), "Tell us your role"),
+  evidence: z
+    .string()
+    .trim()
+    .min(10, "Give us something checkable — a website, business number, or an email at the business's domain")
+    .max(1000, "Keep this under 1000 characters"),
+});

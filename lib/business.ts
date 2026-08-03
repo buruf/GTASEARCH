@@ -194,7 +194,9 @@ export async function searchBusinesses(
  *  matching or ranking involved, so raw SQL buys nothing here. */
 export async function getBusiness(
   slug: string,
-): Promise<(BusinessRow & { hours: string | null; createdAt: Date }) | null> {
+): Promise<
+  (BusinessRow & { hours: string | null; createdAt: Date; claimedById: string | null }) | null
+> {
   return db.business.findFirst({
     where: { slug, status: "active" },
     select: {
@@ -213,6 +215,8 @@ export async function getBusiness(
       verified: true,
       hours: true,
       createdAt: true,
+      // Drives the "Is this your business?" claim CTA — hidden once owned.
+      claimedById: true,
     },
   });
 }

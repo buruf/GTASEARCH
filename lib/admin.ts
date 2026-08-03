@@ -25,7 +25,10 @@ export async function requireAdmin(): Promise<string> {
 
 export async function adminStats() {
   const now = new Date();
-  const [users, activeListings, drafts, sold, expired, openReports, revenue, unreadMessages] =
+  const [
+    users, activeListings, drafts, sold, expired, openReports, revenue, unreadMessages,
+    pendingClaims, claimedBusinesses, proBusinesses,
+  ] =
     await Promise.all([
       db.user.count(),
       db.listing.count({ where: { status: "active", expiresAt: { gt: now } } }),
@@ -37,11 +40,14 @@ export async function adminStats() {
       db.report.count({ where: { status: "open" } }),
       db.boostPayment.aggregate({ _sum: { amount: true }, where: { status: "paid" } }),
       db.message.count({ where: { readAt: null } }),
+      db.businessClaim.count({ where: { status: "pending" } }),
+      db.business.count({ where: { claimedById: { not: null } } }),
+      db.business.count({ where: { plan: "pro" } }),
     ]);
   return {
     users, activeListings, drafts, sold, expired, openReports,
     boostRevenue: Number(revenue._sum.amount ?? 0),
-    unreadMessages,
+    unreadMessages, pendingClaims, claimedBusinesses, proBusinesses,
   };
 }
 

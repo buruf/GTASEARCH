@@ -20,6 +20,9 @@ export default async function AdminOverviewPage() {
     ["Sold", s.sold],
     ["Expired", s.expired],
     ["Unread messages", s.unreadMessages],
+    ["Pending claims", s.pendingClaims],
+    ["Claimed businesses", s.claimedBusinesses],
+    ["Pro subscribers", s.proBusinesses],
   ];
 
   return (

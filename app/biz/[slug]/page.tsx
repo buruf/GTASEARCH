@@ -193,17 +193,21 @@ export default async function BusinessProfilePage({
         </p>
       </section>
 
-      <div className="mt-6 rounded-card border border-line bg-surface-alt p-4">
-        <h2 className="text-sm font-bold text-ink">Is this your business?</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Claiming and updating your listing is coming soon. Meanwhile, for
-          corrections, see our{" "}
-          <Link href="/contact" className="font-medium text-brand hover:text-brand-dark">
-            contact page
+      {!business.claimedById && (
+        <div className="mt-6 rounded-card border border-line bg-surface-alt p-4">
+          <h2 className="text-sm font-bold text-ink">Is this your business?</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Claim it free to correct the details, add photos and hours, and show
+            a verified badge.
+          </p>
+          <Link
+            href={`/biz/${business.slug}/claim`}
+            className="mt-3 inline-block rounded-btn bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
+          >
+            Claim this business
           </Link>
-          .
-        </p>
-      </div>
+        </div>
+      )}
 
       {similar.length > 0 && (
         <section aria-labelledby="similar-business-heading" className="mt-12">
