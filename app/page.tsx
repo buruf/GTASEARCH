@@ -66,6 +66,23 @@ function popularChips(
   return [...chips, ...topUp];
 }
 
+// Circular tinted icon backgrounds, one tone per category — the flat green
+// icons read as a single undifferentiated block at grid size. Full class
+// strings, not interpolated, because Tailwind only ships classes it can see
+// literally in the source.
+const CATEGORY_TONE: Record<string, string> = {
+  restaurants: "bg-amber-50 text-amber-700",
+  health: "bg-rose-50 text-rose-700",
+  "home-services": "bg-sky-50 text-sky-700",
+  beauty: "bg-fuchsia-50 text-fuchsia-700",
+  automotive: "bg-blue-50 text-blue-700",
+  professional: "bg-indigo-50 text-indigo-700",
+  shopping: "bg-teal-50 text-teal-700",
+  education: "bg-orange-50 text-orange-700",
+  fitness: "bg-cyan-50 text-cyan-700",
+  pets: "bg-pink-50 text-pink-700",
+};
+
 export default async function HomePage() {
   const [counts, recent, recentAds, viewerId] = await Promise.all([
     businessCountsByCategory(),
@@ -77,6 +94,9 @@ export default async function HomePage() {
     ? await savedIdsFor(viewerId, recentAds.map((l) => l.id))
     : undefined;
 
+  const totalBusinesses = Object.values(counts).reduce((sum, n) => sum + n, 0);
+  const liveCategories = Object.values(counts).filter((n) => n > 0).length;
+
   return (
     <>
       {/* Sky gradient + illustrated Toronto skyline. Text sits on the light
@@ -85,20 +105,20 @@ export default async function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-[#D9EAF8] via-[#E9F3FB] to-[#F4F9FD]">
         <TorontoSkyline className="pointer-events-none absolute bottom-0 left-0 h-36 w-full sm:h-52" />
         <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-10 text-center sm:pb-32 sm:pt-14">
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            Find local businesses across the{" "}
-            <span className="text-brand-dark">GTA</span>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-5xl">
+            The local search engine for the{" "}
+            <span className="text-brand-dark">Greater Toronto Area</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-ink-muted sm:text-base">
-            Restaurants, health, home services, beauty, automotive and more —
-            plus local classifieds to buy and sell.
+          <p className="mx-auto mt-4 max-w-2xl text-base text-ink-muted sm:text-lg">
+            Restaurants, salons, daycares, trades and more — plus local
+            classifieds. Everything local, one search.
           </p>
 
           <form
             action="/directory/search"
             method="GET"
             role="search"
-            className="mx-auto mt-6 flex w-full max-w-3xl flex-col gap-2 rounded-card bg-surface p-2 shadow-card sm:flex-row sm:items-stretch"
+            className="mx-auto mt-8 flex w-full max-w-4xl flex-col gap-2 rounded-card bg-surface p-2.5 shadow-card-hover sm:flex-row sm:items-stretch"
           >
             <div className="flex-1">
               <label htmlFor="directory-q" className="sr-only">
@@ -108,9 +128,26 @@ export default async function HomePage() {
                 id="directory-q"
                 type="search"
                 name="q"
+                list="popular-searches"
                 placeholder="Search businesses…"
-                className="h-12 w-full rounded-btn border border-line px-3 text-base text-ink placeholder:text-ink-faint focus:border-brand"
+                className="h-14 w-full rounded-btn border border-line px-4 text-lg text-ink placeholder:text-ink-faint focus:border-brand"
               />
+              {/* A native datalist: type-ahead suggestions with no JavaScript,
+                  no client bundle and no extra request. Entries are terms the
+                  directory can actually answer today — suggesting "Roofers"
+                  while home-services is empty would just teach people the
+                  search is broken. Extend as curation fills categories. */}
+              <datalist id="popular-searches">
+                <option value="Restaurants" />
+                <option value="Pizza" />
+                <option value="Hair salon" />
+                <option value="Barber" />
+                <option value="Nail salon" />
+                <option value="Tattoo" />
+                <option value="Daycare" />
+                <option value="Auto repair" />
+                <option value="Driving school" />
+              </datalist>
             </div>
 
             <div className="sm:w-48">
@@ -120,7 +157,7 @@ export default async function HomePage() {
               <select
                 id="directory-category"
                 name="category"
-                className="h-12 w-full rounded-btn border border-line bg-surface px-3 text-base text-ink focus:border-brand"
+                className="h-14 w-full rounded-btn border border-line bg-surface px-3 text-base text-ink focus:border-brand"
               >
                 <option value="">All categories</option>
                 {BUSINESS_CATEGORIES.map((c) => (
@@ -138,7 +175,7 @@ export default async function HomePage() {
               <select
                 id="directory-city"
                 name="city"
-                className="h-12 w-full rounded-btn border border-line bg-surface px-3 text-base text-ink focus:border-brand"
+                className="h-14 w-full rounded-btn border border-line bg-surface px-3 text-base text-ink focus:border-brand"
               >
                 <option value="">All GTA</option>
                 {CITIES.map((c) => (
@@ -151,13 +188,35 @@ export default async function HomePage() {
 
             <button
               type="submit"
-              className="h-12 rounded-btn bg-brand px-6 text-base font-semibold text-white transition-colors hover:bg-brand-dark"
+              className="h-14 rounded-btn bg-brand px-8 text-lg font-semibold text-white transition-colors hover:bg-brand-dark"
             >
               Search
             </button>
           </form>
 
-          <ul className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          {/* Credibility strip. Every figure is counted from the live
+              database at render time — no rounded-up marketing numbers, and
+              nothing here claims traffic, reviews or city coverage we do not
+              actually have yet. "Toronto" is stated plainly because that is
+              genuinely where the directory data currently is. */}
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-muted">
+            <li>
+              <strong className="font-semibold text-ink">
+                {totalBusinesses.toLocaleString("en-CA")}
+              </strong>{" "}
+              businesses listed
+            </li>
+            <li>
+              <strong className="font-semibold text-ink">{liveCategories}</strong> live
+              categories
+            </li>
+            <li>
+              Sourced from{" "}
+              <strong className="font-semibold text-ink">City of Toronto open data</strong>
+            </li>
+          </ul>
+
+          <ul className="mt-5 flex flex-wrap items-center justify-center gap-2">
             {popularChips(counts).map((chip) => (
               <li key={chip.href}>
                 <Link
@@ -188,12 +247,16 @@ export default async function HomePage() {
                   <li key={c.slug}>
                     <Link
                       href={`/directory/${c.slug}`}
-                      className="flex h-full flex-col items-center gap-2 rounded-card border border-line bg-surface p-3 text-center transition-colors hover:border-brand hover:bg-brand-50"
+                      className="flex h-full flex-col items-center gap-2 rounded-card border border-line bg-surface p-4 text-center transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-card-hover"
                     >
-                      <span className="text-brand">
-                        <CategoryIcon name={c.icon} className="h-7 w-7" />
+                      <span
+                        className={`flex h-14 w-14 items-center justify-center rounded-full ${
+                          CATEGORY_TONE[c.slug] ?? "bg-brand-50 text-brand"
+                        }`}
+                      >
+                        <CategoryIcon name={c.icon} className="h-9 w-9" />
                       </span>
-                      <span className="text-xs font-medium leading-tight text-ink sm:text-sm">
+                      <span className="text-xs font-semibold leading-tight text-ink sm:text-sm">
                         {c.label}
                       </span>
                       <span className="mt-auto text-[11px] text-ink-faint">
@@ -220,6 +283,30 @@ export default async function HomePage() {
             </div>
           </section>
         )}
+
+        {/* Business-owner CTA. Deliberately makes no promise we cannot keep:
+            self-serve claiming is Phase 5B, so this routes to contact rather
+            than advertising a signup flow that does not exist yet. */}
+        <section aria-labelledby="owners-heading" className="mt-12">
+          <div className="flex flex-col gap-3 rounded-card border border-line bg-surface-alt p-5 text-center sm:p-6">
+            <h2 id="owners-heading" className="text-lg font-bold text-ink sm:text-xl">
+              Own a business in the GTA?
+            </h2>
+            <p className="mx-auto max-w-2xl text-sm text-ink-muted">
+              GTASearch is built from public records, so your business may
+              already be listed. Tell us about it and we&apos;ll add or correct
+              your details — free.
+            </p>
+            <div>
+              <Link
+                href="/contact"
+                className="inline-block rounded-btn bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
+              >
+                Add or update your business
+              </Link>
+            </div>
+          </div>
+        </section>
 
         <section aria-labelledby="classifieds-heading" className="mt-12">
           <div className="rounded-card border border-line bg-brand-50 p-5 sm:p-6">
