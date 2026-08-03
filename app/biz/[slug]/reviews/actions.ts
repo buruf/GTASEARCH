@@ -7,6 +7,8 @@ import { ReviewError, deleteOwnReview, respondToReview, upsertReview } from "@/l
 import { OwnerResponseSchema, ReviewSchema } from "@/lib/validation";
 import { violatesModeration } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
+import { sendNewReviewEmail } from "@/lib/email";
+import { appUrl } from "@/lib/env";
 
 export interface ReviewState {
   error?: string;
@@ -49,14 +51,33 @@ export async function submitReviewAction(
     return { error: "That review could not be posted. Please reword it." };
   }
 
-  const business = await businessBySlug(slug);
+  const business = await db.business.findUnique({
+    where: { slug },
+    select: { id: true, name: true, claimedBy: { select: { email: true } } },
+  });
   if (!business) return { error: "That business no longer exists." };
 
+  let created = false;
   try {
-    await upsertReview(business.id, userId, parsed.data.rating, parsed.data.body);
+    ({ created } = await upsertReview(business.id, userId, parsed.data.rating, parsed.data.body));
   } catch (err) {
     if (err instanceof ReviewError) return { error: err.message };
     throw err;
+  }
+
+  // Only on a NEW review — editing your own wording should not re-notify the
+  // owner every time. Awaited, and failure never fails the action.
+  if (created && business.claimedBy?.email) {
+    try {
+      await sendNewReviewEmail(business.claimedBy.email, {
+        businessName: business.name,
+        rating: parsed.data.rating,
+        snippet: parsed.data.body.slice(0, 200),
+        businessUrl: `${appUrl()}/biz/${slug}`,
+      });
+    } catch {
+      /* review stands regardless */
+    }
   }
 
   revalidatePath(`/biz/${slug}`);

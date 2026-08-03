@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { currentUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ClaimError, submitClaim } from "@/lib/claims";
-import { ClaimSchema } from "@/lib/validation";
+import { CLAIM_ROLES, ClaimSchema } from "@/lib/validation";
+import { adminEmail } from "@/lib/env";
+import { sendClaimSubmittedEmail } from "@/lib/email";
 import { violatesModeration } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -51,7 +53,7 @@ export async function submitClaimAction(
 
   const business = await db.business.findUnique({
     where: { slug },
-    select: { id: true },
+    select: { id: true, name: true, address: true },
   });
   if (!business) return { error: "That business no longer exists." };
 
@@ -60,6 +62,26 @@ export async function submitClaimAction(
   } catch (err) {
     if (err instanceof ClaimError) return { error: err.message };
     throw err;
+  }
+
+  // Awaited, not fire-and-forget: a serverless function can be frozen the
+  // moment it returns, which silently drops a void-IIFE send (the Phase 3A
+  // lesson). Failure is swallowed — the claim is already saved, and the
+  // email is a convenience, not the record.
+  const admin = adminEmail();
+  if (admin) {
+    try {
+      await sendClaimSubmittedEmail(admin, {
+        businessName: business.name,
+        businessAddress: business.address,
+        claimantName: parsed.data.contactName,
+        claimantEmail: parsed.data.contactEmail,
+        role: CLAIM_ROLES[parsed.data.roleAtBusiness] ?? parsed.data.roleAtBusiness,
+        evidence: parsed.data.evidence,
+      });
+    } catch {
+      /* claim stands regardless */
+    }
   }
 
   revalidatePath(`/biz/${slug}`);
