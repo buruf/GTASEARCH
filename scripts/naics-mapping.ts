@@ -44,6 +44,13 @@ export const NAICS_MAPPING: Record<string, NaicsMappingEntry> = {
   "445110": { category: "restaurants", subcategory: "grocery" },
   "445131": { category: "restaurants", subcategory: "grocery" },
   "445132": { category: "restaurants", subcategory: "grocery" },
+  // Specialty food retailers. 445210 "Meat Markets" was missing until
+  // Aug 3 2026, which silently dropped every dedicated butcher in every
+  // source — four of Brampton's eight halal meat shops were lost to this
+  // alone. 445220/445250 are its siblings under 4452 and were missing too.
+  "445210": { category: "restaurants", subcategory: "grocery" }, // Meat Markets
+  "445220": { category: "restaurants", subcategory: "grocery" }, // Fish and Seafood Markets
+  "445250": { category: "restaurants", subcategory: "grocery" }, // Fruit and Vegetable Markets
 
   // ---- health --------------------------------------------------------
   "621210": { category: "health", subcategory: "dentists" },

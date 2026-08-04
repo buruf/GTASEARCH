@@ -118,6 +118,23 @@ describe("import helpers", () => {
     expect(isPlausibleStreetAddress(null)).toBe(false);
   });
 
+  // Brampton writes the unit INTO the address as a prefix instead of using a
+  // separate field. Rejecting that shape cost 2,353 of its 6,126 records —
+  // 38% of the city, concentrated in exactly the plaza units where its
+  // independent shops trade. Regression guard: these must stay true.
+  it("accepts unit-prefixed addresses (Brampton's format)", () => {
+    expect(isPlausibleStreetAddress("8-8550 TORBRAM RD")).toBe(true);
+    expect(isPlausibleStreetAddress("7-49 KENNEDY RD S")).toBe(true);
+    expect(isPlausibleStreetAddress("102-9780 BRAMALEA RD")).toBe(true);
+    expect(isPlausibleStreetAddress("A-149 CLARENCE ST")).toBe(true);
+    expect(isPlausibleStreetAddress("134A-499 MAIN ST S")).toBe(true);
+    expect(isPlausibleStreetAddress("203D-25 PEEL CENTRE DR")).toBe(true);
+    // Widening the pattern must not start letting junk through.
+    expect(isPlausibleStreetAddress("PO BOX 1234")).toBe(false);
+    expect(isPlausibleStreetAddress("Brampton, Ontario")).toBe(false);
+    expect(isPlausibleStreetAddress("-")).toBe(false);
+  });
+
   it("repairs CP437 mojibake without touching legitimate punctuation", () => {
     expect(repairMojibake("Caf‚ Vilamor")).toBe("Café Vilamor");
     expect(repairMojibake("Gar‡on")).toBe("Garçon");

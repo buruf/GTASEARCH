@@ -86,10 +86,20 @@ export function cleanAddress(line: string): string {
  * Guards against blank/placeholder rows. Callers that pull from a
  * Toronto-only dataset can rely on this alone; callers reading a licensing
  * feed that covers out-of-city licensees must ALSO check the city field.
+ *
+ * An optional leading unit token is allowed, because Brampton's directory
+ * writes the unit INTO the address as a prefix — "8-8550 TORBRAM RD",
+ * "134A-499 MAIN ST S", "A-149 CLARENCE ST" — rather than in a separate
+ * field the way Mississauga, York and Durham do. The original pattern
+ * required a digit run followed immediately by whitespace, so every one of
+ * those was rejected as junk: 2,353 of Brampton's 6,126 records, 38% of the
+ * city, and disproportionately the plaza and mall units where a great many
+ * of Brampton's independent shops actually trade. Found while investigating
+ * a user report that a real Brampton grocery store returned no results.
  */
 export function isPlausibleStreetAddress(line: string | null | undefined): boolean {
   if (!line) return false;
   const l = line.trim();
   if (l.length < 5) return false;
-  return /^\d+[a-zA-Z0-9]*\s+\S/.test(l);
+  return /^(?:[A-Za-z0-9]+\s*-\s*)?\d+[a-zA-Z0-9]*\s+\S/.test(l);
 }
