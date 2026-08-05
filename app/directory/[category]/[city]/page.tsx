@@ -15,7 +15,7 @@ import {
   getBusinessCategoryLabel,
   getBusinessSubcategoryLabel,
 } from "@/lib/business-categories";
-import { getCity, getCityLabel } from "@/lib/cities";
+import { cityRank, getCity, getCityLabel } from "@/lib/cities";
 import { CHIP_ACTIVE, CHIP_INACTIVE, parsePage } from "../../shared";
 
 type Params = { category: string; city: string };
@@ -115,7 +115,8 @@ export default async function DirectoryCategoryCityPage({
   // businesses in it.
   const otherCities = Object.entries(cityCounts)
     .filter(([slug, count]) => slug !== city.slug && count > 0)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    // Canonical city order, not listing count — see lib/cities.ts header.
+    .sort((a, b) => cityRank(a[0]) - cityRank(b[0]) || a[0].localeCompare(b[0]));
 
   // Cross-link: other categories in this city with at least one business —
   // count-gated so crawlers don't get walked into empty category×city pages

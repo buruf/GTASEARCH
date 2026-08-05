@@ -1,5 +1,18 @@
 // GTA cities served by the platform, with representative neighbourhoods used
 // for seed data and for the neighbourhood autocomplete in Phase 2.
+//
+// ARRAY ORDER IS THE CANONICAL DISPLAY ORDER, roughly largest municipality
+// first. Do not reorder casually — city lists across the directory sort by
+// cityRank() below rather than by how many businesses we happen to hold.
+//
+// Why that matters: coverage per city reflects what each municipality
+// PUBLISHES, not how much commerce it has. Toronto releases licences and
+// health inspections — and the City does not license doctors, lawyers or
+// accountants, so it has none of them — while York, Peel and Durham publish
+// full business directories. Sorting city lists by listing count therefore
+// told visitors that Markham is a larger commercial centre than Toronto,
+// which is plainly false. The counts are still shown beside each city, since
+// those are honest; they simply no longer decide the running order.
 
 export interface City {
   slug: string;
@@ -196,6 +209,20 @@ export function getCity(slug: string | undefined): City | undefined {
 
 export function getCityLabel(slug: string): string {
   return CITY_BY_SLUG.get(slug)?.label ?? slug;
+}
+
+const CITY_RANK = new Map(CITIES.map((c, i) => [c.slug, i]));
+
+/**
+ * Canonical position of a city in every list we render, taken from the order
+ * of CITIES (largest municipality first). Unknown slugs sort last.
+ *
+ * Use this instead of sorting by listing count. See the header of this file:
+ * count reflects what a municipality publishes, not its size, so ranking by
+ * it misinforms the reader about the GTA itself.
+ */
+export function cityRank(slug: string): number {
+  return CITY_RANK.get(slug) ?? Number.MAX_SAFE_INTEGER;
 }
 
 /** Filters a list of candidate slugs down to those that exist. */

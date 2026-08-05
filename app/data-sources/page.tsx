@@ -157,6 +157,28 @@ export default function DataSourcesPage() {
         them.
       </p>
 
+      <h2 className="mt-10 text-lg font-bold text-ink">
+        Why coverage differs between cities
+      </h2>
+      <p className="mt-2 text-sm text-ink-muted">
+        The number of businesses we list for a city reflects what that
+        municipality publishes — not how much commerce it has. Peel, York and
+        Durham publish full business directories covering every industry, so
+        our coverage there is broad. Toronto does not publish a business
+        directory at all; what it releases is business licences and public
+        health inspections. The City licenses restaurants, salons and garages,
+        but it does not license doctors, dentists, lawyers or accountants —
+        those are regulated by provincial colleges — so those professions are
+        absent from Toronto&apos;s open data, and therefore from our Toronto
+        listings.
+      </p>
+      <p className="mt-3 text-sm text-ink-muted">
+        This is why we never rank cities by how many businesses we hold. The
+        counts shown beside each city are real, but they measure our source
+        coverage, not the size of a local economy, and reading them as a league
+        table would be misleading.
+      </p>
+
       <h2 className="mt-10 text-lg font-bold text-ink">Corrections</h2>
       <p className="mt-2 text-sm text-ink-muted">
         Open data can be out of date — businesses close, move and change hands

@@ -87,4 +87,16 @@ export const LICENCE_MAPPING: Record<string, LicenceMappingEntry> = {
   // ---- shopping --------------------------------------------------------
   // Resale of general used goods; no closer taxonomy subcategory exists.
   "SECOND HAND SHOP": { category: "shopping" },
+
+  // ---- home services ---------------------------------------------------
+  // Added Aug 3 2026. Toronto is badly under-represented next to the regional
+  // directories — it publishes licences, not a business directory, so whole
+  // categories (doctors, lawyers, accountants) are absent because the City
+  // does not license them. Re-auditing all 92 licence classes for anything
+  // legitimately missed turned up exactly one substantial category:
+  // laundromats and dry cleaners. 2,246 records, EVERY one carrying a street
+  // address — a fixed commercial premises, not a plate holder or a trade
+  // qualification, so none of the exclusions below apply to it. Matches the
+  // 8123 (dry cleaning and laundry) mapping already used for the regions.
+  "LAUNDRY PREMISES": { category: "home-services", subcategory: "cleaning" },
 };

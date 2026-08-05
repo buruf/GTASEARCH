@@ -10,7 +10,7 @@ import {
   businessSubcategoryCounts,
 } from "@/lib/business";
 import { getBusinessCategory } from "@/lib/business-categories";
-import { getCityLabel } from "@/lib/cities";
+import { cityRank, getCityLabel } from "@/lib/cities";
 import { CHIP_ACTIVE, CHIP_INACTIVE, parsePage } from "../shared";
 
 type Params = { category: string };
@@ -74,7 +74,8 @@ export default async function DirectoryCategoryPage({
 
   const cities = Object.entries(cityCounts)
     .filter(([, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    // Canonical city order, not listing count — see lib/cities.ts header.
+    .sort((a, b) => cityRank(a[0]) - cityRank(b[0]) || a[0].localeCompare(b[0]));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">

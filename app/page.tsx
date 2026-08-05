@@ -4,7 +4,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { BusinessGrid } from "@/components/BusinessCard";
 import { ListingGrid } from "@/components/ListingCard";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
-import { CITIES } from "@/lib/cities";
+import { CITIES, cityRank } from "@/lib/cities";
 import {
   businessCityCounts,
   businessCountsByCategory,
@@ -109,7 +109,11 @@ export default async function HomePage() {
     count: cityCounts[city.slug] ?? 0,
   }))
     .filter((c) => c.count > 0)
-    .sort((a, b) => b.count - a.count);
+    // Canonical order (largest municipality first), NOT listing count — our
+    // count per city reflects what each municipality publishes, so ranking by
+    // it claimed Markham is a bigger commercial centre than Toronto. See the
+    // header of lib/cities.ts.
+    .sort((a, b) => cityRank(a.city.slug) - cityRank(b.city.slug));
 
   return (
     <>
