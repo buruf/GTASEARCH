@@ -85,6 +85,9 @@ const CATEGORY_TONE: Record<string, string> = {
   education: "bg-orange-50 text-orange-700",
   fitness: "bg-cyan-50 text-cyan-700",
   pets: "bg-pink-50 text-pink-700",
+  // Neutral slate, matching the deliberately non-denominational icon — a
+  // tinted colour here would read as favouring one tradition.
+  religion: "bg-slate-100 text-slate-700",
 };
 
 export default async function HomePage() {

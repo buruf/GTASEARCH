@@ -214,6 +214,12 @@ export const NAICS_MAPPING: Record<string, NaicsMappingEntry> = {
   // fitness
   "7139": { category: "fitness", subcategory: "sports-clubs" },
   "71394": { category: "fitness", subcategory: "gyms" },
+
+  // places of worship. NAICS records no denomination here — every congregation
+  // is 813110 — so no subcategory is set at this layer. The importer reads the
+  // faith from the congregation's own name instead (religionSubcategory), and
+  // leaves it blank when the name does not say.
+  "8131": { category: "religion" },
 };
 
 /**

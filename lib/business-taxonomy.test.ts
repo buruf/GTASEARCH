@@ -4,12 +4,15 @@ import { makeBusinessSlug } from "@/lib/business-slug";
 import { getCity } from "@/lib/cities";
 
 describe("business taxonomy", () => {
-  it("has the ten spec categories with unique slugs", () => {
-    expect(BUSINESS_CATEGORIES).toHaveLength(10);
+  // Ten from the Phase 5A spec, plus "religion" (Places of Worship), added
+  // Aug 3 2026 once open data proved it could actually be populated.
+  it("has the eleven categories with unique slugs", () => {
+    expect(BUSINESS_CATEGORIES).toHaveLength(11);
     const slugs = BUSINESS_CATEGORIES.map((c) => c.slug);
-    expect(new Set(slugs).size).toBe(10);
+    expect(new Set(slugs).size).toBe(11);
     expect(slugs).toContain("restaurants");
     expect(slugs).toContain("home-services");
+    expect(slugs).toContain("religion");
   });
   it("every category has subcategories with unique slugs", () => {
     for (const c of BUSINESS_CATEGORIES) {

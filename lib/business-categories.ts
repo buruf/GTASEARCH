@@ -147,6 +147,29 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { slug: "boarding-daycare", label: "Boarding & Daycare" },
     ],
   },
+  {
+    // Places of worship. NAICS files every congregation under one code,
+    // 813110 "Religious Organizations", with no denomination recorded — so
+    // the subcategory is read from the congregation's own name (see
+    // religionSubcategory in scripts/import-helpers.ts). A place whose name
+    // does not say which faith it serves keeps NO subcategory rather than
+    // being guessed at; getting someone's place of worship wrong is worse
+    // than leaving it uncategorised.
+    //
+    // The subcategory list is alphabetical deliberately: it renders in this
+    // order, and any other ordering would rank faiths against each other.
+    slug: "religion",
+    label: "Places of Worship",
+    icon: "worship",
+    subcategories: [
+      { slug: "buddhist-temples", label: "Buddhist Temples" },
+      { slug: "churches", label: "Churches" },
+      { slug: "gurdwaras", label: "Gurdwaras" },
+      { slug: "hindu-temples", label: "Hindu Temples" },
+      { slug: "mosques", label: "Mosques" },
+      { slug: "synagogues", label: "Synagogues" },
+    ],
+  },
 ];
 
 const BY_SLUG = new Map(BUSINESS_CATEGORIES.map((c) => [c.slug, c]));

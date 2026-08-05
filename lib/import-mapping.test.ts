@@ -9,6 +9,7 @@ import {
 import {
   cleanName,
   isPlausibleStreetAddress,
+  religionSubcategory,
   normalizeWebsite,
   preferOperatingName,
   repairMojibake,
@@ -116,6 +117,30 @@ describe("import helpers", () => {
     expect(isPlausibleStreetAddress("UNIT 4")).toBe(false);
     expect(isPlausibleStreetAddress("")).toBe(false);
     expect(isPlausibleStreetAddress(null)).toBe(false);
+  });
+
+  // NAICS gives every congregation one code with no denomination, so the faith
+  // is read from the name. The rule must stay strict: an unclear name gets NO
+  // subcategory, because mislabelling a place of worship is worse than leaving
+  // it generic.
+  it("reads denomination from a place of worship's own name", () => {
+    expect(religionSubcategory("Jame Masjid Brampton")).toBe("mosques");
+    expect(religionSubcategory("Islamic Centre of Markham")).toBe("mosques");
+    expect(religionSubcategory("St Patrick's Catholic Church")).toBe("churches");
+    expect(religionSubcategory("Grace Baptist Chapel")).toBe("churches");
+    expect(religionSubcategory("Ontario Khalsa Darbar Gurdwara")).toBe("gurdwaras");
+    expect(religionSubcategory("Hindu Sabha Mandir")).toBe("hindu-temples");
+    expect(religionSubcategory("Buddhist Vihara of Toronto")).toBe("buddhist-temples");
+    expect(religionSubcategory("Beth Emeth Synagogue")).toBe("synagogues");
+  });
+
+  it("refuses to guess a denomination it cannot read", () => {
+    // "Temple" alone spans Hindu, Buddhist, Sikh, Jewish and Masonic use.
+    expect(religionSubcategory("The Temple")).toBeNull();
+    expect(religionSubcategory("Faith Community Centre")).toBeNull();
+    expect(religionSubcategory("Riverside Fellowship")).toBeNull();
+    // Two faiths named at once is ambiguous, not a match for either.
+    expect(religionSubcategory("Hindu Temple and Church Hall")).toBeNull();
   });
 
   // Brampton writes the unit INTO the address as a prefix instead of using a

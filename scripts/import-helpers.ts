@@ -82,6 +82,38 @@ export function cleanAddress(line: string): string {
 }
 
 /**
+ * Reads a place of worship's denomination from its own name.
+ *
+ * NAICS files every congregation under 813110 "Religious Organizations" and
+ * records no denomination, so there is nothing in the data to map. What there
+ * IS, reliably, is the congregation's chosen name: places of worship name
+ * themselves after what they are, far more consistently than ordinary
+ * businesses describe their trade.
+ *
+ * The rule is strict on purpose: a name must contain an unambiguous marker of
+ * one faith and no other, otherwise this returns null and the record is filed
+ * under Places of Worship with no subcategory. Mislabelling someone's place of
+ * worship is a worse failure than leaving it uncategorised, so every doubtful
+ * case is left alone. "Temple" alone is deliberately NOT a marker — it is used
+ * by Hindu, Buddhist, Sikh, Jewish and Masonic organisations alike.
+ */
+const RELIGION_MARKERS: [string, RegExp][] = [
+  ["mosques", /\b(mosque|masjid|musalla|jamia|jaame?|islamic centre|islamic center|muslim association)\b/i],
+  ["churches", /\b(church|chapel|cathedral|parish|congregation of christ|evangel|baptist|pentecostal|anglican|catholic|presbyterian|lutheran|methodist|orthodox church|assembly of god|tabernacle)\b/i],
+  ["gurdwaras", /\b(gurdwara|gurudwara|sikh|khalsa)\b/i],
+  ["hindu-temples", /\b(hindu|mandir|devi|shiva|krishna|ganesh|swaminarayan|durga|balaji|iskcon)\b/i],
+  ["buddhist-temples", /\b(buddh|vihara|dharma|zen centre|zen center|meditation temple|sangha)\b/i],
+  ["synagogues", /\b(synagogue|shul|chabad|beth |bnai|b'nai|jewish congregation|hebrew congregation)\b/i],
+];
+
+export function religionSubcategory(name: string): string | null {
+  const hits = RELIGION_MARKERS.filter(([, re]) => re.test(name)).map(([slug]) => slug);
+  // Exactly one faith must match. A name hitting two markers ("Hindu Temple
+  // and Church Hall") is ambiguous and gets none.
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/**
  * A usable street address starts with a street number and has some substance.
  * Guards against blank/placeholder rows. Callers that pull from a
  * Toronto-only dataset can rely on this alone; callers reading a licensing

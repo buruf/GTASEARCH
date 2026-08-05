@@ -57,12 +57,21 @@ import {
   cleanAddress,
   cleanName,
   isPlausibleStreetAddress,
+  religionSubcategory,
   normalizeWebsite,
   repairMojibake,
 } from "./import-helpers";
 
 const PAGE_SIZE = 1000;
-const HARD_CAP = 12_000;
+// Ceiling on rows written in one run — a deliberate rail so a mapping mistake
+// cannot dump the whole GTA into the directory before anyone notices. Raised
+// from 12,000 to 40,000 on Aug 3 2026, with the owner's approval, because the
+// NAICS group-prefix fix made ~32,000 records legitimately importable at once
+// and York alone exceeded the old ceiling (9,413 imported, 5,142 left behind
+// mid-run). A truncated import is worse than a large one: it leaves a city
+// half-covered with no record of where it stopped. `--limit` can still only
+// LOWER this, never raise it.
+const HARD_CAP = 40_000;
 const WRITE_CHUNK = 250;
 
 /** Normalised record, whatever the source portal called its columns. */
@@ -359,8 +368,18 @@ async function main() {
       const address = repairMojibake(cleanAddress(raw.address));
       const website = normalizeWebsite(raw.website);
       const cityLabel = CITIES.find((c) => c.slug === citySlug)!.label;
-      const subLabel = mapping.subcategory
-        ? getBusinessSubcategoryLabel(mapping.category, mapping.subcategory)
+
+      // Places of worship all share one NAICS code with no denomination
+      // recorded, so their subcategory is read from the congregation's own
+      // name — and stays null when the name does not say which faith it
+      // serves. See religionSubcategory in import-helpers.
+      const subcategory =
+        mapping.category === "religion"
+          ? religionSubcategory(name)
+          : (mapping.subcategory ?? null);
+
+      const subLabel = subcategory
+        ? getBusinessSubcategoryLabel(mapping.category, subcategory)
         : null;
       const description = `${subLabel ?? getBusinessCategoryLabel(mapping.category)} in ${cityLabel}. Listed in the ${source.label}.`;
 
@@ -399,12 +418,12 @@ async function main() {
       candidates.push({
         slug, name, description,
         category: mapping.category,
-        subcategory: mapping.subcategory ?? null,
+        subcategory,
         city: citySlug, address,
         phone: raw.phone, website, isUpdate,
       });
 
-      const k = `${mapping.category}/${mapping.subcategory ?? "(none)"}`;
+      const k = `${mapping.category}/${subcategory ?? "(none)"}`;
       histogram.set(k, (histogram.get(k) ?? 0) + 1);
       perCity.set(citySlug, (perCity.get(citySlug) ?? 0) + 1);
     }

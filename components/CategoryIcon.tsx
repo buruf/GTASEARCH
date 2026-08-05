@@ -45,6 +45,17 @@ const paths: Record<string, React.ReactNode> = {
       <path d="m5.5 4 2.5 2.5M4 8.5 7 6" />
     </>
   ),
+  // Deliberately non-denominational: a domed hall with an arched entrance and
+  // no cross, crescent, star or wheel. One icon serves every faith in the
+  // Places of Worship category, so it must not favour any of them.
+  worship: (
+    <>
+      <path d="M5 20v-8a7 7 0 0 1 14 0v8" />
+      <path d="M3.5 20h17" />
+      <path d="M12 12.5a2.6 2.6 0 0 0-2.6 2.6V20h5.2v-4.9A2.6 2.6 0 0 0 12 12.5z" />
+      <path d="M12 2v2.6" />
+    </>
+  ),
   paw: (
     <>
       <ellipse cx="7" cy="9" rx="1.8" ry="2.3" />
