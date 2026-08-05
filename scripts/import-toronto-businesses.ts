@@ -48,8 +48,9 @@
 //               writes. Prints the licence-category histogram and mapping
 //               coverage, plus what the run counters would have been.
 //   --limit N   Maximum number of businesses to import+update this run.
-//               Hard-capped at 1000 regardless of what's passed (Global
-//               Constraint) — this is a first-batch import, not a bulk load.
+//               Hard-capped at HARD_CAP regardless of what's passed (Global
+//               Constraint); --limit can only LOWER it. Raised from 1,000 to
+//               25,000 on Aug 3 2026 — see the constant for why.
 //
 // Approach: paginate the *unfiltered* datastore in batches of 1000, sorted
 // by Issued desc (recent licences are far more likely to still be active,
@@ -60,6 +61,7 @@
 // hit (to avoid a runaway scan if very few rows turn out to qualify).
 
 import "dotenv/config";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { makeBusinessSlug } from "@/lib/business-slug";
 import { getBusinessCategory, getBusinessCategoryLabel, getBusinessSubcategoryLabel } from "@/lib/business-categories";
@@ -69,8 +71,20 @@ import { cleanAddress, cleanName, isPlausibleStreetAddress } from "./import-help
 const CKAN_BASE = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/";
 const RESOURCE_ID = "169e90ba-3ae0-43dd-8b2f-919e87002f50";
 const BATCH_SIZE = 1000;
-const SAFETY_MAX_SCANNED = 50_000; // stop scanning even if under `limit`
-const HARD_CAP = 1000; // Global Constraint — never exceed regardless of --limit
+// Both ceilings raised Aug 3 2026 with the owner's approval. The originals
+// (1,000 imports, 50,000 rows scanned) were Phase 5A rails from when this
+// script was new and unproven — and they are why Toronto held only ~1,000
+// businesses while York held 17,000, letting Markham appear to outrank a city
+// ten times its size.
+//
+// The licence file carries 79,847 rows in categories we map, spread through
+// the whole 159,459-row dataset, so the old scan ceiling could not reach them
+// all however high the import cap went; both had to move together. Rows still
+// collapse heavily on the way in: a business accumulates one licence row per
+// renewal, and resolveSlug folds those back onto a single record.
+const SAFETY_MAX_SCANNED = 200_000; // full dataset is ~159,459 rows
+const HARD_CAP = 25_000; // Global Constraint — never exceed regardless of --limit
+const WRITE_CHUNK = 250; // rows per createMany — matches the regional importer
 
 interface TorontoRow {
   _id: number;
@@ -162,7 +176,28 @@ function isPlausibleTorontoAddress(line1: string | null, line2: string | null): 
  *  address) resolve back to the same slug instead of colliding. */
 const runSlugToAddress = new Map<string, string>();
 
-async function resolveSlug(name: string, address: string, dryRun: boolean): Promise<{ slug: string; isUpdate: boolean }> {
+/**
+ * Every existing Toronto slug, loaded ONCE at the start of a run.
+ *
+ * This used to be a findUnique per candidate slug. That was survivable while
+ * the import cap was 1,000 rows, but at full scale it means tens of thousands
+ * of round trips through the pgbouncer pool, and the run died partway with
+ * P1017 "Server has closed the connection" — leaving Toronto half-imported.
+ * The regional importer already resolves slugs in memory for exactly this
+ * reason; this is that fix backported. One query, then pure map lookups.
+ */
+const existingSlugs = new Map<string, { address: string; source: string }>();
+
+async function preloadExistingSlugs(): Promise<void> {
+  const rows = await db.business.findMany({
+    where: { city: "toronto" },
+    select: { slug: true, address: true, source: true },
+  });
+  for (const r of rows) existingSlugs.set(r.slug, { address: r.address, source: r.source });
+  console.log(`  preloaded ${rows.length} existing Toronto slugs`);
+}
+
+function resolveSlug(name: string, address: string): { slug: string; isUpdate: boolean } {
   const base = makeBusinessSlug(name, "toronto");
   let candidate = base;
   let n = 2;
@@ -177,11 +212,7 @@ async function resolveSlug(name: string, address: string, dryRun: boolean): Prom
       continue;
     }
 
-    // Not seen yet this run — check the DB (read-only; safe under --dry-run).
-    const existing = await db.business.findUnique({
-      where: { slug: candidate },
-      select: { address: true, source: true },
-    });
+    const existing = existingSlugs.get(candidate);
     if (!existing) {
       runSlugToAddress.set(candidate, address);
       return { slug: candidate, isUpdate: false };
@@ -211,6 +242,9 @@ async function main() {
   console.log(`Toronto business import — ${dryRun ? "DRY RUN" : "LIVE RUN"}, limit=${limit}`);
   console.log("");
 
+  await preloadExistingSlugs();
+  console.log("");
+
   const counters: Counters = {
     scanned: 0,
     imported: 0,
@@ -219,6 +253,11 @@ async function main() {
     skippedInactive: 0,
     skippedBadAddress: 0,
   };
+
+  // Writes are queued during the scan and flushed in chunks afterwards — see
+  // the note at the queue sites.
+  const pendingCreates: Prisma.BusinessCreateManyInput[] = [];
+  const pendingUpdates: { slug: string; description: string; phone: string | null }[] = [];
   const categoryHistogram = new Map<string, number>();
   const mappedCategoryOutcomes = new Map<string, { imported: number; updated: number; skippedInactive: number; skippedBadAddress: number }>();
 
@@ -283,33 +322,31 @@ async function main() {
       const description = `${subcategoryLabel ?? categoryLabel} in Toronto. Licensed with the City of Toronto.`;
       const phone = row["Business Phone"]?.trim() || null;
 
-      const { slug, isUpdate } = await resolveSlug(name, address, dryRun);
+      const { slug, isUpdate } = resolveSlug(name, address);
 
+      // Queued, not written here. Writing a row at a time inside the scan
+      // loop is what killed the first full-scale run: thousands of sequential
+      // single-row statements through pgbouncer and the pool drops with P1017
+      // ("Server has closed the connection") partway through, leaving Toronto
+      // half-imported. The regional importer collects candidates and writes
+      // them in chunks for exactly this reason; this is that shape backported.
       if (!dryRun) {
         if (isUpdate) {
-          await db.business.update({
-            where: { slug },
-            data: {
-              description,
-              ...(phone ? { phone } : {}),
-            },
-          });
+          pendingUpdates.push({ slug, description, phone });
         } else {
-          await db.business.create({
-            data: {
-              slug,
-              name,
-              description,
-              category: mapping.category,
-              subcategory: mapping.subcategory ?? null,
-              city: "toronto",
-              address,
-              phone,
-              images: [],
-              status: "active",
-              source: "open-data",
-              verified: false,
-            },
+          pendingCreates.push({
+            slug,
+            name,
+            description,
+            category: mapping.category,
+            subcategory: mapping.subcategory ?? null,
+            city: "toronto",
+            address,
+            phone,
+            images: [],
+            status: "active",
+            source: "open-data",
+            verified: false,
           });
         }
       }
@@ -325,6 +362,37 @@ async function main() {
     }
 
     offset += rows.length;
+  }
+
+  // -------------------------------------------------------------- write
+  //
+  // Chunked, after the scan. skipDuplicates makes a re-run after an
+  // interrupted one safe: rows already written are ignored rather than
+  // exploding on the unique slug index, so this script stays resumable.
+  if (!dryRun && (pendingCreates.length > 0 || pendingUpdates.length > 0)) {
+    console.log("");
+    for (let i = 0; i < pendingCreates.length; i += WRITE_CHUNK) {
+      await db.business.createMany({
+        data: pendingCreates.slice(i, i + WRITE_CHUNK),
+        skipDuplicates: true,
+      });
+      process.stderr.write(
+        `\r  created ${Math.min(i + WRITE_CHUNK, pendingCreates.length)}/${pendingCreates.length}`,
+      );
+    }
+    if (pendingCreates.length) process.stderr.write("\n");
+
+    // Updates cannot be batched into one statement (each row gets its own
+    // description/phone), but they are far fewer than creates and are the
+    // rows that already exist.
+    for (const [i, u] of pendingUpdates.entries()) {
+      await db.business.update({
+        where: { slug: u.slug },
+        data: { description: u.description, ...(u.phone ? { phone: u.phone } : {}) },
+      });
+      if (i % 250 === 0) process.stderr.write(`\r  updated ${i}/${pendingUpdates.length}`);
+    }
+    if (pendingUpdates.length) process.stderr.write(`\r  updated ${pendingUpdates.length}/${pendingUpdates.length}\n`);
   }
 
   // ------------------------------------------------------------- report
