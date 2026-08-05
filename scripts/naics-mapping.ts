@@ -140,6 +140,80 @@ export const NAICS_MAPPING: Record<string, NaicsMappingEntry> = {
   "812910": { category: "pets", subcategory: "grooming" },
   "459910": { category: "pets", subcategory: "pet-stores" },
   "453910": { category: "pets", subcategory: "pet-stores" },
+
+  // ---- industry-group fallbacks (4- and 5-digit) ----------------------
+  //
+  // Added Aug 3 2026 after auditing every unmapped code across all four
+  // sources: 45,302 records were being skipped, and the largest single cause
+  // was a FORMAT mismatch rather than a missing industry. York Region codes
+  // its directory at FIVE digits (81211, 62111, 62121) while almost every
+  // entry above is six, so lookupNaics fell straight through — York's 1,143
+  // hair salons, 724 doctors' offices and 656 dentists all landed in
+  // "skippedUnmapped" despite those exact industries being mapped already.
+  //
+  // These are group-level prefixes, so the six-digit entries above still win
+  // (longest match first) and keep their finer subcategories. Everything here
+  // is a whole NAICS group that falls entirely inside one of our categories —
+  // no group is listed where part of it would belong somewhere else.
+  //
+  // The SCOPE RULE still holds: wholesale (417230), freight arrangement
+  // (488519) and other B2B-only groups stay unmapped on purpose. So do
+  // religious organisations (81311/813110, 725 records) — not because they
+  // do not belong, but because GTASearch has no category for them yet.
+
+  // restaurants
+  "4451": { category: "restaurants", subcategory: "grocery" }, // Grocery/convenience retailers
+  "4452": { category: "restaurants", subcategory: "grocery" }, // Specialty food stores
+  "7222": { category: "restaurants", subcategory: "fast-food" }, // Limited-service eating places
+
+  // health
+  "6211": { category: "health", subcategory: "family-doctors" }, // Offices of physicians
+  "6212": { category: "health", subcategory: "dentists" }, // Offices of dentists
+  "6213": { category: "health" }, // Offices of other health practitioners
+  "62134": { category: "health", subcategory: "physiotherapy" }, // Physio/OT/speech
+  "6214": { category: "health", subcategory: "walk-in-clinics" }, // Outpatient care centres
+  "44611": { category: "health", subcategory: "pharmacies" },
+
+  // beauty — 8121 is Personal Care Services in full (hair, nails, esthetics)
+  "8121": { category: "beauty" },
+
+  // home services. Every trade prefix here is added to HOME_BASED_RISK below,
+  // exactly like its six-digit siblings — a contractor's registered address is
+  // very often their house, and the commercial-signal gate must still apply.
+  "2382": { category: "home-services" }, // Building equipment contractors
+  "23821": { category: "home-services", subcategory: "electricians" },
+  "23822": { category: "home-services", subcategory: "plumbers" },
+  "23611": { category: "home-services" }, // Residential building construction
+  "8123": { category: "home-services" }, // Dry cleaning and laundry services
+
+  // professional
+  "5411": { category: "professional", subcategory: "lawyers" }, // Legal services
+  "5412": { category: "professional", subcategory: "accountants" }, // Accounting/tax/payroll
+  "54133": { category: "professional" }, // Engineering services
+  "54151": { category: "professional" }, // Computer systems design
+  "54161": { category: "professional" }, // Management consulting
+  "5312": { category: "professional", subcategory: "real-estate-agents" },
+  "53131": { category: "professional" }, // Real estate property managers
+  "52421": { category: "professional", subcategory: "insurance" },
+  "52393": { category: "professional" }, // Investment advice
+
+  // shopping
+  "4481": { category: "shopping", subcategory: "clothing" },
+  "4483": { category: "shopping", subcategory: "jewellery" },
+  "4422": { category: "shopping", subcategory: "furniture-stores" },
+  "44314": { category: "shopping", subcategory: "electronics-stores" },
+  "44619": { category: "shopping" }, // Other health and personal care stores
+  "45399": { category: "shopping" }, // All other miscellaneous retailers
+
+  // education
+  "6111": { category: "education" }, // Elementary and secondary schools
+  "61169": { category: "education" }, // All other schools and instruction
+  "61161": { category: "education" }, // Fine arts schools
+  "62441": { category: "education", subcategory: "daycares" },
+
+  // fitness
+  "7139": { category: "fitness", subcategory: "sports-clubs" },
+  "71394": { category: "fitness", subcategory: "gyms" },
 };
 
 /**
@@ -153,6 +227,11 @@ export const NAICS_MAPPING: Record<string, NaicsMappingEntry> = {
 export const HOME_BASED_RISK = new Set([
   "238220", "238210", "238310", "238320", "238160",
   "561730", "561720", "484210", "238990", "236118",
+  // The 4- and 5-digit trade prefixes added Aug 3 2026 carry exactly the same
+  // hazard as their six-digit siblings above. The importer tests the record's
+  // OWN digit string against this set, so a York record coded "23822" needs
+  // its own entry — inheriting from "238220" is not something this gate does.
+  "2382", "23821", "23822", "23611",
 ]);
 
 /**
