@@ -139,7 +139,13 @@ export default async function HomePage() {
           priority
           sizes="100vw"
           placeholder="blur"
-          quality={72}
+          // 55, not the 75 default. This image is viewed through a 60% black
+          // scrim, which hides compression artefacts that would be obvious on
+          // a photo shown plainly — so the usual quality floor does not apply.
+          // Measured on production: q=72 cost mobile performance 100 -> 98
+          // (LCP 1.8s -> 2.3s); q=55 buys most of that back at no visible
+          // cost. Re-measure if the scrim is ever lightened.
+          quality={55}
           // Framing, worked out from the source rather than by eye. The hero
           // band is ~3.4:1 and the photo is 4:3, so object-cover shows only
           // about 39% of the image's height. In the original the CN Tower
