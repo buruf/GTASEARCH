@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { TorontoSkyline } from "@/components/TorontoSkyline";
+import Image from "next/image";
+// Statically imported so Next knows the intrinsic size at build time and can
+// generate the blur placeholder — neither works with a bare "/path" string.
+import heroPhoto from "@/public/toronto-hero.jpg";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BusinessGrid } from "@/components/BusinessCard";
 import { ListingGrid } from "@/components/ListingCard";
@@ -117,17 +120,46 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Sky gradient + illustrated Toronto skyline. Text sits on the light
-          upper sky, so contrast stays WCAG-clean; the search card is solid
-          white and reads fine over the buildings. */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#D9EAF8] via-[#E9F3FB] to-[#F4F9FD]">
-        <TorontoSkyline className="pointer-events-none absolute bottom-0 left-0 h-36 w-full sm:h-52" />
+      {/* Hero: the owner's own aerial photograph of downtown Toronto, taken
+          from a plane (so there is no licence question and no attribution to
+          carry — see docs/data-sources or ask before ever swapping it for
+          stock). It replaces the illustrated skyline, which read as a
+          placeholder beside real photography.
+
+          Contrast: the photo is bright at the top (sky and frozen lake) and
+          busy everywhere, so white text on it would fail WCAG on its own. The
+          scrim below is a fixed dark gradient, strongest exactly where the
+          headline and subhead sit, which keeps white text well past AA no
+          matter which part of the image a given viewport crops to. */}
+      <section className="relative overflow-hidden bg-[#0B1F2E]">
+        <Image
+          src={heroPhoto}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          placeholder="blur"
+          quality={72}
+          // Anchored low: the skyline and CN Tower sit in the lower half of
+          // the frame, so a centre crop would fill a short hero band with
+          // empty sky.
+          className="object-cover object-[center_65%]"
+        />
+        <div
+          aria-hidden="true"
+          // Mid stop is 60%, not 55%: the subhead sits on it, and against the
+          // brightest thing the photo can put there (lit sky) 55% left white
+          // text at ~3.96:1 — under the 4.5:1 AA floor. At 60% the worst case
+          // is ~5.7:1. Worst-case is the right test here because the crop, and
+          // so what sits behind the text, changes with every viewport.
+          className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/70"
+        />
         <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-10 text-center sm:pb-32 sm:pt-14">
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-5xl">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-5xl">
             The local search engine for the{" "}
-            <span className="text-brand-dark">Greater Toronto Area</span>
+            <span className="text-brand-light">Greater Toronto Area</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-ink-muted sm:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-white sm:text-lg">
             Restaurants, salons, daycares, trades and more — plus local
             classifieds. Everything local, one search.
           </p>
@@ -217,19 +249,19 @@ export default async function HomePage() {
               nothing here claims traffic, reviews or city coverage we do not
               actually have yet. "Toronto" is stated plainly because that is
               genuinely where the directory data currently is. */}
-          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-muted">
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/85">
             <li>
-              <strong className="font-semibold text-ink">
+              <strong className="font-semibold text-white">
                 {totalBusinesses.toLocaleString("en-CA")}
               </strong>{" "}
               businesses listed
             </li>
             <li>
-              <strong className="font-semibold text-ink">{liveCategories}</strong> live
+              <strong className="font-semibold text-white">{liveCategories}</strong> live
               categories
             </li>
             <li>
-              <strong className="font-semibold text-ink">
+              <strong className="font-semibold text-white">
                 {citiesWithBusinesses.length}
               </strong>{" "}
               cities
@@ -238,7 +270,7 @@ export default async function HomePage() {
               Built from{" "}
               <Link
                 href="/data-sources"
-                className="font-semibold text-brand underline-offset-2 hover:underline"
+                className="font-semibold text-white underline underline-offset-2 hover:text-brand-light"
               >
                 GTA municipal open data
               </Link>
@@ -250,7 +282,10 @@ export default async function HomePage() {
               <li key={chip.href}>
                 <Link
                   href={chip.href}
-                  className="inline-block rounded-btn border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-muted hover:border-brand hover:text-brand"
+                  // Solid white, not a translucent pill: a frosted chip over
+                  // photography changes contrast with whatever is behind it,
+                  // and this hero's backdrop shifts with every crop.
+                  className="inline-block rounded-btn bg-white/95 px-3 py-1.5 text-xs font-medium text-ink shadow-sm hover:bg-white hover:text-brand-dark"
                 >
                   {chip.label}
                 </Link>
