@@ -140,22 +140,33 @@ export default async function HomePage() {
           sizes="100vw"
           placeholder="blur"
           quality={72}
-          // Anchored low: the skyline and CN Tower sit in the lower half of
-          // the frame, so a centre crop would fill a short hero band with
-          // empty sky.
-          className="object-cover object-[center_65%]"
+          // Framing, worked out from the source rather than by eye. The hero
+          // band is ~3.4:1 and the photo is 4:3, so object-cover shows only
+          // about 39% of the image's height. In the original the CN Tower
+          // spans roughly 31–51% down and the downtown core 39–59%; anchoring
+          // at 65% put the visible window at 45–85%, which cut the tower off
+          // at the top edge and filled the band with the residential grid.
+          // 42% centres the window on the skyline itself.
+          className="object-cover object-[center_42%]"
         />
         <div
           aria-hidden="true"
-          // Mid stop is 60%, not 55%: the subhead sits on it, and against the
-          // brightest thing the photo can put there (lit sky) 55% left white
-          // text at ~3.96:1 — under the 4.5:1 AA floor. At 60% the worst case
-          // is ~5.7:1. Worst-case is the right test here because the crop, and
-          // so what sits behind the text, changes with every viewport.
-          className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/70"
+          // 60% is the floor, not a preference: against the brightest thing
+          // the crop can put behind the subhead, it holds white text at about
+          // 5.7:1, where 55% measured ~3.96:1 and failed the 4.5:1 AA floor.
+          // Worst-case is the right test because the crop — and so what sits
+          // behind the text — changes with every viewport.
+          //
+          // The top stop was 75%, which buried the photo: the whole point of
+          // real photography is that you can tell it is Toronto. Dropped to
+          // 60% so the lake and skyline read, which is safe because the only
+          // thing up there is the h1, and large bold text needs 3:1, not 4.5.
+          className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/60 to-black/70"
         />
         <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-10 text-center sm:pb-32 sm:pt-14">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-5xl">
+          {/* text-balance evens the two lines out; without it the break fell
+              after "Greater", stranding it away from "Toronto Area". */}
+          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm [text-wrap:balance] sm:text-5xl">
             The local search engine for the{" "}
             <span className="text-brand-light">Greater Toronto Area</span>
           </h1>
