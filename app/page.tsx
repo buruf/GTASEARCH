@@ -139,12 +139,17 @@ export default async function HomePage() {
           priority
           sizes="100vw"
           placeholder="blur"
-          // 55, not the 75 default. This image is viewed through a 60% black
-          // scrim, which hides compression artefacts that would be obvious on
-          // a photo shown plainly — so the usual quality floor does not apply.
-          // Measured on production: q=72 cost mobile performance 100 -> 98
-          // (LCP 1.8s -> 2.3s); q=55 buys most of that back at no visible
-          // cost. Re-measure if the scrim is ever lightened.
+          // 55, not the 75 default, because this image is viewed through a
+          // 60% black scrim that hides the compression artefacts which would
+          // make 55 unacceptable on a photo shown plainly.
+          //
+          // It does NOT buy back the Lighthouse score, and it was wrong of me
+          // to assume it would: measured on production, mobile performance is
+          // 98 with LCP 2.3s at BOTH q=55 and q=72. The remaining half-second
+          // is the round trip for an above-the-fold image at all, not its
+          // weight. Kept anyway on the honest ground it does help — 69KB
+          // versus 82KB at 828w, ~16% less to pull on a slow connection, even
+          // though the score bucket does not move.
           quality={55}
           // Framing, worked out from the source rather than by eye. The hero
           // band is ~3.4:1 and the photo is 4:3, so object-cover shows only
