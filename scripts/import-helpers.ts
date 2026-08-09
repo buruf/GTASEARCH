@@ -133,5 +133,11 @@ export function isPlausibleStreetAddress(line: string | null | undefined): boole
   if (!line) return false;
   const l = line.trim();
   if (l.length < 5) return false;
-  return /^(?:[A-Za-z0-9]+\s*-\s*)?\d+[a-zA-Z0-9]*\s+\S/.test(l);
+  // The optional single leading letter covers rural Ontario numbering —
+  // "B1420 Thorah Concession Rd 4", "B295 48 Highway", "B27305 Sideroad 17"
+  // are real addresses in Brock Township, and requiring a leading digit threw
+  // away 47 genuine Durham businesses (Beaverton Self Storage, Fairgreen Sod
+  // Farms) as malformed. One letter only: it must still be a number-led
+  // address, not a name-led line like "Unit 4, Some Plaza".
+  return /^(?:[A-Za-z0-9]+\s*-\s*)?[A-Za-z]?\d+[a-zA-Z0-9]*\s+\S/.test(l);
 }

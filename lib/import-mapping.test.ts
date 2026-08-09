@@ -119,6 +119,25 @@ describe("import helpers", () => {
     expect(isPlausibleStreetAddress(null)).toBe(false);
   });
 
+  // Rural Ontario numbers some addresses with a letter prefix. Durham
+  // publishes 47 of them and every one was discarded as malformed, which is
+  // why its skipped-bad-address count stood out against every other source.
+  // These are real, locatable businesses.
+  it("accepts letter-prefixed rural street numbers", () => {
+    expect(isPlausibleStreetAddress("B1420 Thorah Concession Rd 4")).toBe(true);
+    expect(isPlausibleStreetAddress("B295 48 Highway")).toBe(true);
+    expect(isPlausibleStreetAddress("B27305 Sideroad 17")).toBe(true);
+  });
+
+  // The prefix is ONE letter and the line must still lead with a number.
+  // Loosening further would admit name-led lines, and publishing "Suite 200,
+  // Some Plaza" as a street address is worse than dropping the row.
+  it("still rejects name-led lines", () => {
+    expect(isPlausibleStreetAddress("Suite 200 Plaza")).toBe(false);
+    expect(isPlausibleStreetAddress("Thorah Concession Rd 4")).toBe(false);
+    expect(isPlausibleStreetAddress("Beaverton Self Storage")).toBe(false);
+  });
+
   // NAICS gives every congregation one code with no denomination, so the faith
   // is read from the name. The rule must stay strict: an unclear name gets NO
   // subcategory, because mislabelling a place of worship is worse than leaving
