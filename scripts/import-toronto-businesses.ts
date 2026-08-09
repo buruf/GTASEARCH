@@ -74,7 +74,7 @@ const TORONTO_DISTRICT_SLUGS = ["toronto", "scarborough", "etobicoke", "north-yo
 /** Reported at the end of a run so the split is visible, not silent. */
 const districtCounts = new Map<string, number>();
 import { LICENCE_MAPPING } from "./toronto-licence-mapping";
-import { cleanAddress, cleanName, isPlausibleStreetAddress } from "./import-helpers";
+import { cleanAddress, cleanName, isPlausibleStreetAddress, subcategoryFromName } from "./import-helpers";
 
 const CKAN_BASE = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/";
 const RESOURCE_ID = "169e90ba-3ae0-43dd-8b2f-919e87002f50";
@@ -332,7 +332,15 @@ async function main() {
         counters.skippedUnmapped++;
         continue;
       }
-      const subcategoryLabel = mapping.subcategory ? getBusinessSubcategoryLabel(mapping.category, mapping.subcategory) : null;
+      // The licence class is evidence and wins; the name is inference and is
+      // only consulted when the class said nothing. "EATING OR DRINKING
+      // ESTABLISHMENT" covers a pizzeria and a tavern alike, which is why
+      // 53% of restaurants had no subcategory at all.
+      const subcategory =
+        mapping.subcategory ?? subcategoryFromName(mapping.category, name);
+      const subcategoryLabel = subcategory
+        ? getBusinessSubcategoryLabel(mapping.category, subcategory)
+        : null;
       const categoryLabel = getBusinessCategoryLabel(mapping.category);
 
       // Which part of Toronto. Amalgamation means every record here says
@@ -364,7 +372,7 @@ async function main() {
             name,
             description,
             category: mapping.category,
-            subcategory: mapping.subcategory ?? null,
+            subcategory,
             city: citySlug,
             address,
             phone,

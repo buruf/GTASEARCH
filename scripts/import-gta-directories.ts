@@ -58,6 +58,7 @@ import {
   cleanName,
   isPlausibleStreetAddress,
   religionSubcategory,
+  subcategoryFromName,
   normalizeWebsite,
   repairMojibake,
 } from "./import-helpers";
@@ -373,10 +374,14 @@ async function main() {
       // recorded, so their subcategory is read from the congregation's own
       // name — and stays null when the name does not say which faith it
       // serves. See religionSubcategory in import-helpers.
+      // Order matters: the NAICS code is evidence and the name is inference,
+      // so a mapped subcategory always wins. The name is only consulted when
+      // the source said nothing — which is the majority of rows, because
+      // NAICS 722511 is just "Full-Service Restaurants".
       const subcategory =
         mapping.category === "religion"
           ? religionSubcategory(name)
-          : (mapping.subcategory ?? null);
+          : (mapping.subcategory ?? subcategoryFromName(mapping.category, name));
 
       const subLabel = subcategory
         ? getBusinessSubcategoryLabel(mapping.category, subcategory)

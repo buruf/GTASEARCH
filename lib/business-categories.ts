@@ -55,6 +55,11 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { slug: "electricians", label: "Electricians" },
       { slug: "hvac", label: "HVAC" },
       { slug: "cleaning", label: "Cleaning" },
+      // Distinct from Cleaning, which means house cleaning. Toronto licenses
+      // 2,246 LAUNDRY PREMISES and the regions code dry cleaners under NAICS
+      // 8123; without this slug every one of them was either uncategorised or
+      // filed as a house-cleaning service, which is a different trade.
+      { slug: "dry-cleaning", label: "Dry Cleaning & Laundry" },
       { slug: "landscaping", label: "Landscaping" },
       { slug: "painters", label: "Painters" },
       { slug: "roofing", label: "Roofing" },

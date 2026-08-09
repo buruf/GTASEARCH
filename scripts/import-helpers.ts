@@ -106,6 +106,115 @@ const RELIGION_MARKERS: [string, RegExp][] = [
   ["synagogues", /\b(synagogue|shul|chabad|beth |bnai|b'nai|jewish congregation|hebrew congregation)\b/i],
 ];
 
+/**
+ * Reads a subcategory from a business's own name.
+ *
+ * 21,230 of 55,000 businesses arrived with no subcategory — 53% of all
+ * restaurants — because the sources do not record one. Toronto licenses an
+ * "EATING OR DRINKING ESTABLISHMENT" without saying whether it is a pizzeria
+ * or a bakery, and NAICS 722511 is simply "Full-Service Restaurants". Those
+ * businesses are correctly filed under Restaurants but invisible to anyone
+ * filtering to Pizza, which is how people actually search a directory.
+ *
+ * Names are the one place the information reliably exists: "Gino's Pizza",
+ * "Ace Hair Salon", "Northern Glow Nail". Same discipline as
+ * religionSubcategory — EXACTLY one marker must match, or this returns null
+ * and the row keeps no subcategory. A wrong subcategory is worse than none:
+ * it puts a business in front of people looking for something else, and the
+ * owner cannot see or correct it.
+ *
+ * Every slug produced here is validated against the live taxonomy by the
+ * caller's test, so a typo cannot silently create a subcategory that no
+ * filter will ever match.
+ */
+export const NAME_MARKERS: Record<string, [string, RegExp][]> = {
+  restaurants: [
+    ["pizza", /\b(pizza|pizzeria|pizzaiolo)\b/i],
+    ["bakeries", /\b(bakery|bakeries|patisserie|p[âa]tisserie|boulangerie)\b/i],
+    ["coffee-tea", /\b(coffee|caf[eé]|espresso|bubble tea|tea house|teahouse)\b/i],
+    ["halal", /\bhalal\b/i],
+    ["dessert", /\b(ice cream|gelato|dessert|donut|doughnut|cupcake|creamery|frozen yogurt)\b/i],
+    ["grocery", /\b(grocery|groceries|supermarket|super ?market|convenience|food ?mart|butcher|fish market|meat market|fruit market)\b/i],
+  ],
+  beauty: [
+    ["barbers", /\b(barber|barbers|barbershop)\b/i],
+    ["hair-salons", /\b(hair|hairstyl\w*|coiffure)\b/i],
+    ["nail-salons", /\b(nail|nails|manicure|pedicure)\b/i],
+    ["spas", /\bspa\b/i],
+    ["massage", /\bmassage\b/i],
+    // "ink" is deliberately absent — it reads as a tattoo marker but appears
+    // in plenty of unrelated trading names.
+    ["tattoo-piercing", /\b(tattoo|piercing)\b/i],
+  ],
+  health: [
+    ["dentists", /\b(dental|dentist|dentistry|orthodont\w*|denture\w*)\b/i],
+    ["pharmacies", /\b(pharmacy|pharmacies|drug ?mart|apothecary)\b/i],
+    ["optometrists", /\b(optical|optometr\w*|eye ?care)\b/i],
+    ["physiotherapy", /\b(physio|physiotherapy)\b/i],
+    ["chiropractors", /\bchiropract\w*/i],
+  ],
+  professional: [
+    ["lawyers", /\b(law|lawyers?|barrister\w*|solicitor\w*|paralegal|llp)\b/i],
+    ["accountants", /\b(accounting|accountants?|cpa|bookkeep\w*)\b/i],
+    ["real-estate-agents", /\b(realty|real ?estate|realtors?)\b/i],
+    ["insurance", /\binsurance\b/i],
+    ["mortgage-brokers", /\bmortgages?\b/i],
+    ["marketing", /\b(marketing|advertising)\b/i],
+  ],
+  "home-services": [
+    ["plumbers", /\b(plumbing|plumbers?)\b/i],
+    ["electricians", /\b(electric|electrical|electrician\w*)\b/i],
+    ["hvac", /\b(hvac|heating|air ?conditioning|furnace)\b/i],
+    // "cleaners" is deliberately NOT here — in Toronto usage "Ace Cleaners"
+    // is a dry cleaner, not a house-cleaning firm. It belongs to the slug
+    // below, and mixing them mislabelled 445 of 687 rows.
+    ["cleaning", /\b(cleaning|janitorial|maid|housekeeping)\b/i],
+    ["dry-cleaning", /\b(dry ?clean\w*|laundr\w*|launderette|coin ?wash|cleaners|alterations?)\b/i],
+    ["landscaping", /\b(landscap\w*|lawn ?care|gardening)\b/i],
+    ["painters", /\b(painting|painters?)\b/i],
+    ["roofing", /\b(roofing|roofers?)\b/i],
+    ["movers", /\b(moving|movers)\b/i],
+  ],
+  education: [
+    ["daycares", /\b(day ?care|child ?care|nursery|montessori|early learning)\b/i],
+    ["driving-schools", /\b(driving school|driving academy)\b/i],
+    ["music-lessons", /\b(music|piano|guitar|violin|conservatory)\b/i],
+    ["tutoring-centres", /\b(tutor\w*|learning cent(re|er))\b/i],
+  ],
+  shopping: [
+    ["clothing", /\b(clothing|apparel|boutique|fashions?)\b/i],
+    ["jewellery", /\b(jewell?ery|jewell?ers?)\b/i],
+    ["florists", /\b(florists?|flowers?)\b/i],
+    ["furniture-stores", /\bfurniture\b/i],
+    ["electronics-stores", /\belectronics\b/i],
+  ],
+};
+
+/**
+ * Matches that look right but are not.
+ *
+ * "Sunshine Dry Cleaning" contains the word "cleaning", so it matches the
+ * house-cleaning marker as well as the dry-cleaning one and would resolve to
+ * nothing under the exactly-one rule. Vetoing the weaker reading lets the
+ * specific one win, rather than losing both.
+ */
+const NAME_VETOES: Record<string, [string, RegExp][]> = {
+  "home-services": [["cleaning", /\b(dry ?clean\w*|laundr\w*|launderette|coin ?wash|alterations?)\b/i]],
+};
+
+export function subcategoryFromName(category: string, name: string): string | null {
+  const markers = NAME_MARKERS[category];
+  if (!markers) return null;
+  const vetoes = NAME_VETOES[category] ?? [];
+  const hits = markers
+    .filter(([, re]) => re.test(name))
+    .map(([slug]) => slug)
+    .filter((slug) => !vetoes.some(([vetoed, re]) => vetoed === slug && re.test(name)));
+  // Exactly one. "Pizza Nova Cafe" matches both pizza and coffee-tea and so
+  // gets neither — the strictness is the point.
+  return hits.length === 1 ? hits[0] : null;
+}
+
 export function religionSubcategory(name: string): string | null {
   const hits = RELIGION_MARKERS.filter(([, re]) => re.test(name)).map(([slug]) => slug);
   // Exactly one faith must match. A name hitting two markers ("Hindu Temple

@@ -10,6 +10,8 @@ import {
   cleanName,
   isPlausibleStreetAddress,
   religionSubcategory,
+  subcategoryFromName,
+  NAME_MARKERS,
   normalizeWebsite,
   preferOperatingName,
   repairMojibake,
@@ -117,6 +119,63 @@ describe("import helpers", () => {
     expect(isPlausibleStreetAddress("UNIT 4")).toBe(false);
     expect(isPlausibleStreetAddress("")).toBe(false);
     expect(isPlausibleStreetAddress(null)).toBe(false);
+  });
+
+  // The sources do not record a subcategory — Toronto licenses an "EATING OR
+  // DRINKING ESTABLISHMENT" without saying whether it is a pizzeria — so it is
+  // read from the name, on the same one-match-or-nothing rule as religion.
+  it("reads a subcategory from the business name", () => {
+    expect(subcategoryFromName("restaurants", "Gino's Pizza")).toBe("pizza");
+    expect(subcategoryFromName("restaurants", "Rahier Patisserie")).toBe("bakeries");
+    expect(subcategoryFromName("beauty", "Ace Hair Salon")).toBe("hair-salons");
+    expect(subcategoryFromName("beauty", "Northern Glow Nail")).toBe("nail-salons");
+    expect(subcategoryFromName("health", "Yonge Dental Centre")).toBe("dentists");
+    expect(subcategoryFromName("home-services", "Dave's Plumbing")).toBe("plumbers");
+  });
+
+  it("returns null when the name says nothing, or says two things", () => {
+    // Nothing to go on — the overwhelming case, and it must stay null rather
+    // than be guessed at.
+    expect(subcategoryFromName("restaurants", "Kravee")).toBeNull();
+    expect(subcategoryFromName("restaurants", "The Harp Tavern")).toBeNull();
+    // Two markers: a wrong subcategory is worse than none, because it puts a
+    // business in front of people looking for something else.
+    expect(subcategoryFromName("restaurants", "Pizza Nova Cafe")).toBeNull();
+    // Categories with no marker table at all.
+    expect(subcategoryFromName("religion", "St Paul's Church")).toBeNull();
+    expect(subcategoryFromName("nonsense", "Anything")).toBeNull();
+  });
+
+  // Toronto's LAUNDRY PREMISES licences land in home-services, so "cleaners"
+  // sweeps up dry cleaners as house cleaning — 333 rows before the veto. The
+  // taxonomy has no laundry subcategory, so none is the honest answer.
+  it("separates dry cleaners from house cleaners", () => {
+    // In Toronto usage "X Cleaners" is a dry cleaner. Mixing the two put 445
+    // of 687 rows in the wrong trade.
+    expect(subcategoryFromName("home-services", "Sunshine Dry Cleaners")).toBe("dry-cleaning");
+    expect(subcategoryFromName("home-services", "Ace Cleaners")).toBe("dry-cleaning");
+    expect(subcategoryFromName("home-services", "Bloor Laundromat")).toBe("dry-cleaning");
+    expect(subcategoryFromName("home-services", "Glendale Cleaners And Alterations")).toBe("dry-cleaning");
+    // "Dry Cleaning" contains "cleaning"; the weaker reading is vetoed so the
+    // specific one wins instead of both cancelling out.
+    expect(subcategoryFromName("home-services", "Kim's Dry Cleaning")).toBe("dry-cleaning");
+    // A genuine house cleaner still resolves.
+    expect(subcategoryFromName("home-services", "Maple Cleaning Services")).toBe("cleaning");
+    expect(subcategoryFromName("home-services", "AAA Janitorial")).toBe("cleaning");
+  });
+
+  // The guard that makes the table safe to extend: a mistyped slug would
+  // produce a subcategory no filter can ever match, and nothing else in the
+  // pipeline would notice.
+  it("only ever emits slugs that exist in the taxonomy", () => {
+    for (const [categorySlug, markers] of Object.entries(NAME_MARKERS)) {
+      const category = getBusinessCategory(categorySlug);
+      expect(category, `unknown category ${categorySlug}`).toBeDefined();
+      const valid = new Set(category!.subcategories.map((s) => s.slug));
+      for (const [sub] of markers) {
+        expect(valid.has(sub), `${categorySlug}/${sub} is not in the taxonomy`).toBe(true);
+      }
+    }
   });
 
   // Rural Ontario numbers some addresses with a letter prefix. Durham
