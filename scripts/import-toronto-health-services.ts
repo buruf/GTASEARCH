@@ -64,6 +64,15 @@ import {
   refineSubcategory,
 } from "./toronto-health-mapping";
 import { cleanAddress, cleanName, isPlausibleStreetAddress } from "./import-helpers";
+import { getCityLabel } from "@/lib/cities";
+import {
+  districtFromPoint,
+  loadWardPolygons,
+  type WardPolygon,
+} from "./toronto-districts";
+
+/** Reported at the end of a run so the district split is visible, not silent. */
+const districtCounts = new Map<string, number>();
 
 const CKAN_BASE = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/";
 const BODYSAFE_RESOURCE = "315f0f9f-cbf0-4b95-b8a5-a4afda0f4ff5";
@@ -81,6 +90,10 @@ interface Establishment {
   address: string;
   lastInspection: string; // ISO date
   serviceTypes: Set<string>;
+  /** [lng, lat] from the feed's GeoJSON, used to place the row in one of
+   *  Toronto's four districts. These feeds carry no postal code, so the
+   *  point is the only district evidence they offer. */
+  point: [number, number] | null;
 }
 
 interface Candidate {
@@ -90,6 +103,7 @@ interface Candidate {
   category: string;
   subcategory: string | null;
   address: string;
+  city: string;
   isUpdate: boolean;
   source: SourceName;
 }
@@ -177,15 +191,31 @@ async function loadEstablishments(
       const date = String(row[fields.date] ?? "").trim();
       if (!id || !name) continue;
 
+      // GeoJSON arrives as a JSON string; a missing or malformed one simply
+      // leaves the row to fall back to "toronto" later.
+      let point: [number, number] | null = null;
+      const rawGeo = row["geometry"];
+      if (rawGeo) {
+        try {
+          const geo = JSON.parse(String(rawGeo)) as { coordinates?: number[] };
+          if (Array.isArray(geo.coordinates) && geo.coordinates.length >= 2) {
+            point = [geo.coordinates[0], geo.coordinates[1]];
+          }
+        } catch {
+          /* leave null */
+        }
+      }
+
       const existing = byId.get(id);
       if (existing) {
         if (date > existing.lastInspection) {
           existing.lastInspection = date;
           existing.name = name;
           existing.address = address;
+          if (point) existing.point = point;
         }
       } else {
-        byId.set(id, { id, name, address, lastInspection: date, serviceTypes: new Set() });
+        byId.set(id, { id, name, address, lastInspection: date, serviceTypes: new Set(), point });
       }
 
       if (fields.service) {
@@ -221,10 +251,11 @@ async function loadExistingSlugs() {
 function resolveSlug(
   name: string,
   address: string,
+  citySlug: string,
   existing: Map<string, { address: string; source: string; category: string }>,
   claimedThisRun: Map<string, string>,
 ): { slug: string; isUpdate: boolean; priorCategory: string | null } {
-  const base = makeBusinessSlug(name, "toronto");
+  const base = makeBusinessSlug(name, citySlug);
   let candidate = base;
   let n = 2;
 
@@ -299,6 +330,12 @@ async function main() {
   const claimedThisRun = new Map<string, string>();
   const candidates: Candidate[] = [];
 
+  // Toronto's 25 ward boundaries, fetched once. These feeds have no postal
+  // code, so coordinates are the only district evidence — see
+  // scripts/toronto-districts.ts.
+  const wardPolygons: WardPolygon[] = await loadWardPolygons();
+  console.log(`Loaded ${wardPolygons.length} ward boundaries for district lookup`);
+
   for (const source of sources) {
     console.log(`Loading ${source}…`);
     const establishments =
@@ -365,15 +402,25 @@ async function main() {
       const what =
         subLabel ??
         (source === "bodysafe" ? "Personal service setting" : getBusinessCategoryLabel(category));
-      const description = `${what} in Toronto. Inspected by Toronto Public Health.`;
 
-      const { slug, isUpdate, priorCategory } = resolveSlug(name, address, existing, claimedThisRun);
+      // Which part of Toronto. These feeds carry no postal code, so the
+      // district comes from the establishment's coordinates via the City's
+      // ward boundaries — see scripts/toronto-districts.ts. A row with no
+      // usable point, or one that falls outside every ward, stays "toronto",
+      // which is always literally true.
+      const citySlug =
+        (est.point && districtFromPoint(est.point[0], est.point[1], wardPolygons)) || "toronto";
+      districtCounts.set(citySlug, (districtCounts.get(citySlug) ?? 0) + 1);
+
+      const description = `${what} in ${getCityLabel(citySlug)}. Inspected by Toronto Public Health.`;
+
+      const { slug, isUpdate, priorCategory } = resolveSlug(name, address, citySlug, existing, claimedThisRun);
       if (isCategoryConflict(priorCategory, category)) {
         counters.skippedConflict++;
         conflicts.push(`${slug}: kept "${priorCategory}", ${source} proposed "${category}"`);
         continue;
       }
-      candidates.push({ slug, name, description, category, subcategory, address, isUpdate, source });
+      candidates.push({ slug, name, description, category, subcategory, address, city: citySlug, isUpdate, source });
 
       const key = `${category}/${subcategory ?? "(none)"}`;
       subcategoryHistogram.set(key, (subcategoryHistogram.get(key) ?? 0) + 1);
@@ -396,7 +443,7 @@ async function main() {
           description: c.description,
           category: c.category,
           subcategory: c.subcategory,
-          city: "toronto",
+          city: c.city,
           address: c.address,
           phone: null,
           images: [],
@@ -436,6 +483,12 @@ async function main() {
   console.log("Per source:");
   for (const [s, n] of perSource) console.log(`  ${s}: ${n}`);
   console.log("");
+  console.log("Per Toronto district (from ward polygons):");
+  for (const [d, n] of [...districtCounts].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${d.padEnd(12)} ${n}`);
+  }
+  console.log("");
+
   console.log("Counters:");
   console.log(`  establishments seen:  ${counters.establishments}`);
   console.log(`  imported (new):       ${counters.imported}`);

@@ -3,12 +3,13 @@ import { BusinessGrid } from "@/components/BusinessCard";
 import { DirectoryPagination } from "../_components/DirectoryPagination";
 import {
   BUSINESS_PAGE_SIZE,
+  businessCityCounts,
   parseBusinessSearchParams,
   searchBusinesses,
   type BusinessSearchFilters,
 } from "@/lib/business";
 import { BUSINESS_CATEGORIES, getBusinessCategoryLabel } from "@/lib/business-categories";
-import { CITIES, getCityLabel } from "@/lib/cities";
+import { CITIES, cityRank, getCityLabel } from "@/lib/cities";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -50,8 +51,22 @@ export default async function DirectorySearchPage({
   searchParams: Params;
 }) {
   const filters = parseBusinessSearchParams(searchParams);
-  const { rows, total, usedFallback } = await searchBusinesses(filters);
+  const [{ rows, total, usedFallback }, cityCounts] = await Promise.all([
+    searchBusinesses(filters),
+    businessCityCounts(),
+  ]);
   const totalPages = Math.max(1, Math.ceil(total / BUSINESS_PAGE_SIZE));
+
+  // Cities the directory actually has businesses in — not the whole CITIES
+  // list. Toronto's open data files Scarborough and Etobicoke records as
+  // "toronto", so those two can only ever return nothing here, and Halton
+  // publishes no directory at all, so Oakville and Burlington cannot appear
+  // either. A filter guaranteed to return zero results only teaches people
+  // the search is broken. A city already present in the URL is kept, so an
+  // existing link never silently drops its own filter.
+  const cityOptions = CITIES.filter(
+    (c) => (cityCounts[c.slug] ?? 0) > 0 || c.slug === filters.city,
+  ).sort((a, b) => cityRank(a.slug) - cityRank(b.slug));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -59,7 +74,7 @@ export default async function DirectorySearchPage({
         {/* Desktop sidebar */}
         <aside className="hidden w-64 shrink-0 lg:block">
           <h2 className="mb-4 text-base font-bold text-ink">Filters</h2>
-          <DirectoryFilterForm filters={filters} />
+          <DirectoryFilterForm filters={filters} cityOptions={cityOptions} />
         </aside>
 
         {/* Mobile drawer — a CSS-only disclosure, no JavaScript required. */}
@@ -68,7 +83,7 @@ export default async function DirectorySearchPage({
             Filters
           </summary>
           <div className="border-t border-line p-4">
-            <DirectoryFilterForm filters={filters} />
+            <DirectoryFilterForm filters={filters} cityOptions={cityOptions} />
           </div>
         </details>
 
@@ -108,7 +123,13 @@ export default async function DirectorySearchPage({
   );
 }
 
-function DirectoryFilterForm({ filters }: { filters: BusinessSearchFilters }) {
+function DirectoryFilterForm({
+  filters,
+  cityOptions,
+}: {
+  filters: BusinessSearchFilters;
+  cityOptions: typeof CITIES;
+}) {
   return (
     <form action="/directory/search" method="GET" className="space-y-4">
       <div>
@@ -164,7 +185,7 @@ function DirectoryFilterForm({ filters }: { filters: BusinessSearchFilters }) {
           className="h-10 w-full rounded-btn border border-line bg-surface px-3 text-sm text-ink focus:border-brand"
         >
           <option value="">All GTA</option>
-          {CITIES.map((c) => (
+          {cityOptions.map((c) => (
             <option key={c.slug} value={c.slug}>
               {c.label}
             </option>

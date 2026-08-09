@@ -250,9 +250,23 @@ export default async function HomePage() {
                 className="h-14 w-full rounded-btn border border-line bg-surface px-3 text-base text-ink focus:border-brand"
               >
                 <option value="">All GTA</option>
-                {CITIES.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.label}
+                {/* Only cities that actually have businesses — NOT the full
+                    CITIES list. Toronto's open data labels every downtown,
+                    Scarborough and Etobicoke record alike as "toronto", so
+                    those two can only ever return nothing here; Oakville and
+                    Burlington likewise, until Halton publishes anything.
+                    Offering a filter that is guaranteed to return no results
+                    teaches people the search is broken.
+
+                    CITIES itself is left alone deliberately: Scarborough and
+                    Etobicoke are entirely real for CLASSIFIEDS, where someone
+                    posting a sofa says Scarborough rather than Toronto, and
+                    the post-ad wizard and listing filters still need them.
+                    This list is derived from live counts, so a city appears
+                    the moment it has data and disappears if it ever loses it. */}
+                {citiesWithBusinesses.map(({ city }) => (
+                  <option key={city.slug} value={city.slug}>
+                    {city.label}
                   </option>
                 ))}
               </select>

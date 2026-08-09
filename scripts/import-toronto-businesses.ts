@@ -65,6 +65,14 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { makeBusinessSlug } from "@/lib/business-slug";
 import { getBusinessCategory, getBusinessCategoryLabel, getBusinessSubcategoryLabel } from "@/lib/business-categories";
+import { getCityLabel } from "@/lib/cities";
+import { districtFromPostal } from "./toronto-districts";
+
+/** The four districts a Toronto row can land in. */
+const TORONTO_DISTRICT_SLUGS = ["toronto", "scarborough", "etobicoke", "north-york"];
+
+/** Reported at the end of a run so the split is visible, not silent. */
+const districtCounts = new Map<string, number>();
 import { LICENCE_MAPPING } from "./toronto-licence-mapping";
 import { cleanAddress, cleanName, isPlausibleStreetAddress } from "./import-helpers";
 
@@ -190,15 +198,22 @@ const existingSlugs = new Map<string, { address: string; source: string }>();
 
 async function preloadExistingSlugs(): Promise<void> {
   const rows = await db.business.findMany({
-    where: { city: "toronto" },
+    // All four Toronto districts, not just "toronto": a business moving from
+    // toronto to scarborough changes its slug, and the collision check has to
+    // see slugs across every district or it will happily mint a duplicate.
+    where: { city: { in: TORONTO_DISTRICT_SLUGS } },
     select: { slug: true, address: true, source: true },
   });
   for (const r of rows) existingSlugs.set(r.slug, { address: r.address, source: r.source });
   console.log(`  preloaded ${rows.length} existing Toronto slugs`);
 }
 
-function resolveSlug(name: string, address: string): { slug: string; isUpdate: boolean } {
-  const base = makeBusinessSlug(name, "toronto");
+function resolveSlug(
+  name: string,
+  address: string,
+  citySlug: string,
+): { slug: string; isUpdate: boolean } {
+  const base = makeBusinessSlug(name, citySlug);
   let candidate = base;
   let n = 2;
 
@@ -319,10 +334,20 @@ async function main() {
       }
       const subcategoryLabel = mapping.subcategory ? getBusinessSubcategoryLabel(mapping.category, mapping.subcategory) : null;
       const categoryLabel = getBusinessCategoryLabel(mapping.category);
-      const description = `${subcategoryLabel ?? categoryLabel} in Toronto. Licensed with the City of Toronto.`;
+
+      // Which part of Toronto. Amalgamation means every record here says
+      // "TORONTO", but the postal code on line 3 gives the district exactly —
+      // see scripts/toronto-districts.ts. Line 3 is populated on effectively
+      // every row, and anything unreadable stays "toronto", which is always
+      // literally true.
+      const citySlug = districtFromPostal(row["Licence Address Line 3"]);
+      const cityLabel = getCityLabel(citySlug);
+      districtCounts.set(citySlug, (districtCounts.get(citySlug) ?? 0) + 1);
+
+      const description = `${subcategoryLabel ?? categoryLabel} in ${cityLabel}. Licensed with the City of Toronto.`;
       const phone = row["Business Phone"]?.trim() || null;
 
-      const { slug, isUpdate } = resolveSlug(name, address);
+      const { slug, isUpdate } = resolveSlug(name, address, citySlug);
 
       // Queued, not written here. Writing a row at a time inside the scan
       // loop is what killed the first full-scale run: thousands of sequential
@@ -340,7 +365,7 @@ async function main() {
             description,
             category: mapping.category,
             subcategory: mapping.subcategory ?? null,
-            city: "toronto",
+            city: citySlug,
             address,
             phone,
             images: [],
@@ -415,6 +440,12 @@ async function main() {
     console.log(`  ${cat}: imported=${o.imported} updated=${o.updated} skipped-inactive=${o.skippedInactive} skipped-bad-address=${o.skippedBadAddress}`);
   }
   console.log("");
+  console.log("Per Toronto district (from postal FSA):");
+  for (const [d, n] of [...districtCounts].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${d.padEnd(12)} ${n}`);
+  }
+  console.log("");
+
   console.log("Counters:");
   console.log(`  imported:            ${counters.imported}`);
   console.log(`  updated:             ${counters.updated}`);

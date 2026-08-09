@@ -108,6 +108,22 @@ export const CITIES: City[] = [
     ],
   },
   {
+    // Toronto's four districts (Toronto, Scarborough, Etobicoke, North York)
+    // are amalgamated into the single City of Toronto, so no municipality
+    // publishes them separately — every open-data record says "toronto".
+    // Directory businesses are assigned to a district by postal FSA or by
+    // coordinates; see scripts/toronto-districts.ts.
+    slug: "north-york",
+    label: "North York",
+    neighbourhoods: [
+      "Willowdale",
+      "Don Mills",
+      "Bayview Village",
+      "Downsview",
+      "York Mills",
+    ],
+  },
+  {
     slug: "oakville",
     label: "Oakville",
     neighbourhoods: ["Bronte", "Glen Abbey", "Old Oakville", "River Oaks"],
