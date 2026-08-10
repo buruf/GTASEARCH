@@ -12,6 +12,14 @@ Halton does not.
 So the only honest routes into Oakville and Burlington are **asking** and
 **owner claiming**. Send from Abdulkadir — it should come from the founder.
 
+**Figures below are current as of Aug 5 2026: 55,318 businesses, 20 GTA
+municipalities, 11 categories.** Twenty is municipalities, not city rows —
+the database also splits Toronto into Scarborough, North York and Etobicoke,
+which are districts of Toronto and must not be counted as separate towns to
+anyone who would know better. Re-check with `npx tsx scripts/directory-stats.ts`
+before sending if time has passed; a stale number in a cold email is the kind
+of thing a records officer notices.
+
 ---
 
 ## Email A — municipal economic development
@@ -24,7 +32,7 @@ Milton / Town of Halton Hills (and Halton Region)
 Hello,
 
 I run GTASearch (www.gtasearch.com), a free local directory for the Greater
-Toronto Area. It currently lists 19,029 businesses across 20 GTA
+Toronto Area. It currently lists 55,318 businesses across 20 GTA
 municipalities, built entirely from municipal open data — Toronto's business
 licences and public-health registers, and the business directories published by
 Peel Region, York Region and Durham Region. Every source and its licence is
@@ -64,7 +72,7 @@ support@gtasearch.com
 Hello,
 
 I run GTASearch (www.gtasearch.com), a free local directory covering the
-Greater Toronto Area. It lists 19,029 businesses across 20 municipalities,
+Greater Toronto Area. It lists 55,318 businesses across 20 municipalities,
 built from municipal open data, with every source credited at
 www.gtasearch.com/data-sources.
 
