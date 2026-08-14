@@ -259,6 +259,7 @@ model Business {
   claimedBy User?           @relation("BusinessOwner", fields: [claimedById], references: [id], onDelete: SetNull)
   claims    BusinessClaim[]
   reviews   Review[]
+  events    Event[]
 
   // Denormalised review aggregates, written ONLY inside the same transaction
   // as the review that changes them (lib/reviews.ts). Kept on the row so
@@ -287,6 +288,60 @@ model Business {
   @@index([category, city, status])
   @@index([city, status])
   @@index([claimedById])
+}
+
+/// A local event — Phase 5D.
+///
+/// Seeded from the City of Toronto's Festivals & Events feed (organiser
+/// submitted, City reviewed, Open Government Licence – Toronto) and later from
+/// business owners posting their own. Same rule as everything else here:
+/// GTASearch never invents an event.
+///
+/// The City's feed publishes ONE ROW PER OCCURRENCE DATE — a month-long
+/// exhibition appears thirty times — so the importer groups on sourceId and
+/// stores a single row spanning the first and last date. Without that the
+/// events page would be the same handful of festivals repeated down the page.
+model Event {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  name        String
+  description String
+  category    String? // the City's own event_category, kept as published
+
+  startsAt DateTime
+  endsAt   DateTime
+
+  venueName String?
+  address   String?
+  city      String
+  /// Free-text price note as published ("Free", "$15 - $30"). Never computed:
+  /// quoting a price we derived at someone's event is how people turn up with
+  /// the wrong money.
+  priceNote String?
+  free      Boolean @default(false)
+
+  website  String?
+  imageUrl String?
+
+  source   String // "open-data" | "self"
+  /// The publisher's own id, so re-imports update rather than duplicate.
+  sourceId String?
+  status   String @default("published") // "published" | "hidden"
+
+  /// Set only when a business owner posts their own event.
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, sourceId])
+  // The listing query is "published, in this city, not finished yet, soonest
+  // first" — this index serves exactly that.
+  @@index([status, city, endsAt])
+  @@index([status, startsAt])
+  @@index([businessId])
 }
 
 /// A review written by a signed-in person about a business.
