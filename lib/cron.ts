@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/db";
 import { sendExpiryReminderEmail } from "@/lib/email";
-import { appUrl, resendEnabled } from "@/lib/env";
+import { appUrl, emailEnabled } from "@/lib/env";
 
 const DAY = 86_400_000;
 const REMINDER_WINDOW_DAYS = 3;
@@ -47,7 +47,7 @@ export async function sendExpiryReminders(
 ): Promise<number> {
   // Degraded mode: leave everything unmarked so reminders flow the day the
   // email key arrives. (Injected senders in tests bypass this gate.)
-  if (send === sendExpiryReminderEmail && !resendEnabled()) return 0;
+  if (send === sendExpiryReminderEmail && !emailEnabled()) return 0;
 
   const due = await db.listing.findMany({
     where: {

@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { DUMMY_HASH } from "@/lib/auth";
 import { createResetToken, consumeResetToken, invalidateResetTokens } from "@/lib/tokens";
 import { sendPasswordResetEmail } from "@/lib/email";
-import { resendEnabled, appUrl } from "@/lib/env";
+import { emailEnabled, appUrl } from "@/lib/env";
 
 export type FormState = { ok: boolean; error?: string; fieldErrors?: Record<string, string> };
 
@@ -37,7 +37,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
 }
 
 export async function forgotAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!resendEnabled()) {
+  if (!emailEnabled()) {
     return { ok: false, error: "Password reset email isn't configured yet. Please contact support." };
   }
   const email = z.string().trim().toLowerCase().email().safeParse(formData.get("email"));

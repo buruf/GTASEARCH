@@ -6,8 +6,9 @@ export function googleEnabled(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
-export function resendEnabled(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+/** True when any mail provider key is set — Brevo (preferred) or Resend. */
+export function emailEnabled(): boolean {
+  return Boolean(process.env.BREVO_API_KEY || process.env.RESEND_API_KEY);
 }
 
 export function cloudinaryConfig(): { cloudName: string; uploadPreset: string } | null {

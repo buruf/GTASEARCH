@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
-import { googleEnabled, resendEnabled, cloudinaryConfig, appUrl } from "@/lib/env";
+import { googleEnabled, emailEnabled, cloudinaryConfig, appUrl } from "@/lib/env";
 
 const saved = { ...process.env };
 beforeEach(() => {
   delete process.env.GOOGLE_CLIENT_ID;
   delete process.env.GOOGLE_CLIENT_SECRET;
   delete process.env.RESEND_API_KEY;
+  delete process.env.BREVO_API_KEY;
   delete process.env.CLOUDINARY_CLOUD_NAME;
   delete process.env.CLOUDINARY_UPLOAD_PRESET;
   delete process.env.NEXTAUTH_URL;
@@ -29,10 +30,13 @@ describe("env degraded-mode helpers", () => {
     expect(cloudinaryConfig()).toEqual({ cloudName: "demo", uploadPreset: "unsigned1" });
   });
 
-  it("resendEnabled reflects RESEND_API_KEY", () => {
-    expect(resendEnabled()).toBe(false);
+  it("emailEnabled reflects either provider key", () => {
+    expect(emailEnabled()).toBe(false);
     process.env.RESEND_API_KEY = "re_123";
-    expect(resendEnabled()).toBe(true);
+    expect(emailEnabled()).toBe(true);
+    delete process.env.RESEND_API_KEY;
+    process.env.BREVO_API_KEY = "xkeysib-123";
+    expect(emailEnabled()).toBe(true);
   });
 
   it("appUrl falls back to localhost dev port", () => {
