@@ -20,6 +20,12 @@ export async function Header() {
         <HeaderSearch variant="desktop" />
 
         <div className="ml-auto flex items-center gap-2">
+          <Link
+            href="/events"
+            className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
+          >
+            Events
+          </Link>
           <HeaderSectionLink variant="desktop" />
           {session?.user ? (
             <UserMenu name={session.user.name ?? "Account"} unread={unread} />

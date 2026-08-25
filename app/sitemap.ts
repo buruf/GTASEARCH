@@ -11,7 +11,7 @@ const BASE = "https://gtasearch.com";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [listings, categoryCityCounts, activeBusinesses] = await Promise.all([
+  const [listings, categoryCityCounts, activeBusinesses, liveEvents] = await Promise.all([
     allVisibleListingIds(),
     // One businessCityCounts() call per category — the directory taxonomy is
     // a fixed, small (ten-entry) constant, so this stays cheap.
@@ -25,6 +25,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: { status: "active" },
       select: { slug: true, updatedAt: true },
     }),
+    // Only events that have not finished — see the /events entry below.
+    db.event.findMany({
+      where: { status: "published", endsAt: { gte: new Date() } },
+      select: { slug: true, updatedAt: true },
+    }),
   ]);
 
   return [
@@ -33,6 +38,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "hourly",
       priority: 1,
     },
+    // Events index, then one URL per event that has not finished. Finished
+    // events are excluded deliberately: submitting dead URLs to a search
+    // engine is how a site teaches Google its sitemap is unreliable.
+    { url: `${BASE}/events`, changeFrequency: "daily" as const, priority: 0.7 },
     // The classifieds section landing page (the pre-flip homepage).
     {
       url: `${BASE}/classifieds`,
@@ -84,6 +93,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.6,
         })),
     ),
+    ...liveEvents.map((e) => ({
+      url: `${BASE}/events/${e.slug}`,
+      lastModified: e.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })),
     ...activeBusinesses.map((b) => ({
       url: `${BASE}/biz/${b.slug}`,
       lastModified: b.updatedAt,

@@ -6,6 +6,7 @@ import heroPhoto from "@/public/toronto-hero.jpg";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BusinessGrid } from "@/components/BusinessCard";
 import { ListingGrid } from "@/components/ListingCard";
+import { EventGrid } from "@/components/EventCard";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 import { CITIES, cityRank } from "@/lib/cities";
 import {
@@ -14,6 +15,7 @@ import {
   newestBusinesses,
 } from "@/lib/business";
 import { recentListings } from "@/lib/search";
+import { soonestEvents } from "@/lib/events";
 import { currentUserId } from "@/lib/auth";
 import { savedIdsFor } from "@/lib/saved";
 
@@ -94,11 +96,12 @@ const CATEGORY_TONE: Record<string, string> = {
 };
 
 export default async function HomePage() {
-  const [counts, cityCounts, recent, recentAds, viewerId] = await Promise.all([
+  const [counts, cityCounts, recent, recentAds, events, viewerId] = await Promise.all([
     businessCountsByCategory(),
     businessCityCounts(),
     newestBusinesses(8),
     recentListings(4),
+    soonestEvents(4),
     currentUserId(),
   ]);
   const savedIds = viewerId
@@ -414,6 +417,27 @@ export default async function HomePage() {
         {/* Business-owner CTA. Deliberately makes no promise we cannot keep:
             self-serve claiming is Phase 5B, so this routes to contact rather
             than advertising a signup flow that does not exist yet. */}
+        {/* Gated on having any: an empty "Whats on" section reads as a
+            broken feature, and the events feed can legitimately run dry. */}
+        {events.length > 0 && (
+          <section aria-labelledby="events-heading" className="mt-12">
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 id="events-heading" className="text-lg font-bold text-ink sm:text-xl">
+                What&apos;s on in the GTA
+              </h2>
+              <Link
+                href="/events"
+                className="text-sm font-medium text-brand hover:text-brand-dark"
+              >
+                All events
+              </Link>
+            </div>
+            <div className="mt-4">
+              <EventGrid events={events} />
+            </div>
+          </section>
+        )}
+
         <section aria-labelledby="owners-heading" className="mt-12">
           <div className="flex flex-col gap-3 rounded-card border border-line bg-surface-alt p-5 text-center sm:p-6">
             <h2 id="owners-heading" className="text-lg font-bold text-ink sm:text-xl">
