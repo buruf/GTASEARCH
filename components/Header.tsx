@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { unreadCountFor } from "@/lib/messages";
 import { Logo } from "@/components/Logo";
 import { HeaderSearch } from "@/components/HeaderSearch";
+import { HeaderSectionLink } from "@/components/HeaderSectionLink";
 import { UserMenu } from "@/components/UserMenu";
 
 export async function Header() {
@@ -19,12 +20,7 @@ export async function Header() {
         <HeaderSearch variant="desktop" />
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/classifieds"
-            className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
-          >
-            Classifieds
-          </Link>
+          <HeaderSectionLink variant="desktop" />
           {session?.user ? (
             <UserMenu name={session.user.name ?? "Account"} unread={unread} />
           ) : (
@@ -45,16 +41,11 @@ export async function Header() {
       </div>
 
       {/* On mobile the search bar drops to its own row so the logo and CTA keep
-          their space. The Classifieds link rides along here too, compact, since
+          their space. The section link rides along here too, compact, since
           the desktop copy above is hidden at this breakpoint. */}
       <div className="flex items-center gap-2 border-t border-line px-4 py-2 sm:hidden">
         <HeaderSearch variant="mobile" />
-        <Link
-          href="/classifieds"
-          className="shrink-0 rounded-btn px-2 py-2 text-xs font-medium text-ink-muted hover:text-ink"
-        >
-          Classifieds
-        </Link>
+        <HeaderSectionLink variant="mobile" />
       </div>
     </header>
   );
