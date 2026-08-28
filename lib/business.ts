@@ -9,6 +9,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getBusinessCategory } from "@/lib/business-categories";
+import { memoizeTtl } from "@/lib/ttl-cache";
 import { getCity } from "@/lib/cities";
 
 export const BUSINESS_PAGE_SIZE = 24;
@@ -286,31 +287,49 @@ export async function browseBusinesses(
   return { rows, total };
 }
 
-/** Directory homepage / nav: business counts per category. */
-export async function businessCountsByCategory(): Promise<
-  Record<string, number>
-> {
-  const rows = await db.business.groupBy({
-    by: ["category"],
-    where: { status: "active" },
-    _count: { _all: true },
-  });
-  return Object.fromEntries(rows.map((r) => [r.category, r._count._all]));
-}
+/**
+ * Directory homepage / nav: business counts per category.
+ *
+ * Cached, because this is a groupBy across all 55,318 rows and it measured
+ * 752ms against production — on a homepage that also runs four other queries,
+ * through a pool with connection_limit=1. That combination is what produced
+ * the 2026-08-28 P2024 incident. The underlying numbers only move when an
+ * importer runs, so serving them a few minutes stale costs nothing real and
+ * removes the largest single query on the busiest page.
+ */
+export const businessCountsByCategory = memoizeTtl(
+  async (): Promise<Record<string, number>> => {
+    const rows = await db.business.groupBy({
+      by: ["category"],
+      where: { status: "active" },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(rows.map((r) => [r.category, r._count._all]));
+  },
+  5 * 60_000,
+);
 
-/** City counts within a category, for the category browse page's city filter.
- *  Omit the category for directory-wide totals per city — what the homepage's
- *  "browse by city" section needs. */
-export async function businessCityCounts(
-  category?: string,
-): Promise<Record<string, number>> {
-  const rows = await db.business.groupBy({
-    by: ["city"],
-    where: { status: "active", ...(category ? { category } : {}) },
-    _count: { _all: true },
-  });
-  return Object.fromEntries(rows.map((r) => [r.city, r._count._all]));
-}
+/**
+ * City counts within a category, for the category browse page's city filter.
+ * Omit the category for directory-wide totals per city — what the homepage's
+ * "browse by city" section needs.
+ *
+ * Cached for the same reason as businessCountsByCategory: another groupBy over
+ * every active row (328ms measured on production), on the same homepage, over
+ * the same single connection. Keyed by category so each variant caches
+ * separately rather than one poisoning the others.
+ */
+export const businessCityCounts = memoizeTtl(
+  async (category?: string): Promise<Record<string, number>> => {
+    const rows = await db.business.groupBy({
+      by: ["city"],
+      where: { status: "active", ...(category ? { category } : {}) },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(rows.map((r) => [r.city, r._count._all]));
+  },
+  5 * 60_000,
+);
 
 /** Category counts within a city, for the category/city browse page's
  *  "other categories in this city" cross-links — keeps those links off of
@@ -380,7 +399,14 @@ export async function similarBusinesses(
       slug: { not: slug },
     },
     select: BROWSE_SELECT,
-    orderBy: [{ verified: "desc" }, { name: "asc" }, { id: "asc" }],
+    // Identical ordering to browseBusinesses, for two reasons: a Pro business
+    // should lead in "similar" exactly as it does on a browse page, and both
+    // queries then share Business_browse_category_city_sort_idx. Drop "plan"
+    // from this list and the sort stops matching the index — Postgres falls
+    // back to reading every business in the category and city and sorting
+    // them, which is precisely what caused the 2026-08-28 connection-pool
+    // incident: 8,394 rows read to return 4, at 671ms per page view.
+    orderBy: [{ plan: "desc" }, { verified: "desc" }, { name: "asc" }, { id: "asc" }],
     take: limit,
   });
 }
