@@ -42,6 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // events are excluded deliberately: submitting dead URLs to a search
     // engine is how a site teaches Google its sitemap is unreliable.
     { url: `${BASE}/events`, changeFrequency: "daily" as const, priority: 0.7 },
+    { url: `${BASE}/near-me`, changeFrequency: "monthly" as const, priority: 0.6 },
     // The classifieds section landing page (the pre-flip homepage).
     {
       url: `${BASE}/classifieds`,

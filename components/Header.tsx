@@ -21,6 +21,12 @@ export async function Header() {
 
         <div className="ml-auto flex items-center gap-2">
           <Link
+            href="/near-me"
+            className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
+          >
+            Near me
+          </Link>
+          <Link
             href="/events"
             className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
           >

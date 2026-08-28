@@ -261,6 +261,16 @@ model Business {
   reviews   Review[]
   events    Event[]
 
+  // Where the business actually is. Nullable because coverage depends on the
+  // source: the regional directories and Toronto Public Health publish
+  // coordinates directly, while Toronto business licences carry only a street
+  // address and are matched against the City of Toronto One Address
+  // Repository. A row without coordinates simply never appears in a
+  // distance search — it is never guessed at from a postal code, which would
+  // put a restaurant up to a kilometre from where it really is.
+  latitude  Float?
+  longitude Float?
+
   // Denormalised review aggregates, written ONLY inside the same transaction
   // as the review that changes them (lib/reviews.ts). Kept on the row so
   // browse pages can show a rating without an aggregate query per card, and
