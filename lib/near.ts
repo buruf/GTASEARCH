@@ -12,7 +12,7 @@
 
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { BUSINESS_CATEGORIES, getBusinessCategory } from "@/lib/business-categories";
+import { getBusinessCategory } from "@/lib/business-categories";
 
 export const NEAR_PAGE_SIZE = 24;
 
@@ -96,38 +96,21 @@ export async function nearbyBusinesses(
 
   const categoryFilter = category ? Prisma.sql`AND category = ${category}` : Prisma.empty;
 
-  // What a person types is matched against the business's NAME plus what kind
-  // of business it is — not just the stored description.
-  //
-  // The description is boilerplate ("Fast Food in Toronto", "Grocery in
-  // Brampton") and it only ever carries the SUBcategory label. So "halal food"
-  // found the 55 halal places filed as Fast Food and missed the halal grocers,
-  // whose description contains no "food" at all. Adding the category label
-  // ("Restaurants & Food") means the generic word in a query is satisfied by
-  // what the business is, and the distinctive word ("halal") does the real
-  // filtering.
-  //
-  // Computing this per row would be far too slow across 55,318 businesses, but
-  // here it only ever runs on whatever survives the bounding box — a few
-  // hundred rows — so it costs nothing measurable.
-  const categoryLabelCase = Prisma.sql`CASE category ${Prisma.join(
-    BUSINESS_CATEGORIES.map((c) => Prisma.sql`WHEN ${c.slug} THEN ${c.label}`),
-    " ",
-  )} ELSE '' END`;
-
   const term = opts.q?.trim();
   // Trigram similarity is applied ONLY to single-word terms. On a multi-word
   // query it matches any one word: "halal food" scored highly against "Tigers
   // Korean Food" on the word "food" alone, putting a Korean restaurant at the
   // top of a halal search.
+  //
+  // The tsvector itself now carries the category label (migration
+  // 20260829120000), so a generic word like "food" is satisfied by what the
+  // business IS and the distinctive word does the filtering. That replaced an
+  // inline per-row to_tsvector here — same behaviour, one mechanism.
   const singleWord = term ? !/\s/.test(term) : false;
   const textFilter =
     term && term.length >= 2
       ? Prisma.sql`AND (
-          to_tsvector('english',
-            name || ' ' || (${categoryLabelCase}) || ' ' || coalesce(subcategory, '')
-          ) @@ websearch_to_tsquery('english', ${term})
-          OR "searchVector" @@ websearch_to_tsquery('english', ${term})
+          "searchVector" @@ websearch_to_tsquery('english', ${term})
           OR name ILIKE ${"%" + term + "%"}
           ${singleWord ? Prisma.sql`OR word_similarity(${term}, name) > 0.55` : Prisma.empty}
         )`
