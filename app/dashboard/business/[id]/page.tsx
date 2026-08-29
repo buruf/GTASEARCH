@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { currentUserId } from "@/lib/auth";
 import { ClaimError, ownedBusiness } from "@/lib/claims";
-import { isPro, photoLimitFor } from "@/lib/plans";
+import { isPro, photoLimitFor, dealLimitFor } from "@/lib/plans";
 import { BusinessProfileForm } from "../BusinessProfileForm";
 import { BusinessPhotos } from "../BusinessPhotos";
+import { BusinessDeals } from "../BusinessDeals";
+import { dealsForOwner } from "@/lib/deals";
 
 export const metadata: Metadata = {
   title: "Edit business",
@@ -31,6 +33,7 @@ export default async function EditBusinessPage({ params }: { params: { id: strin
   }
 
   const pro = isPro(business.plan, business.planRenewsAt);
+  const deals = await dealsForOwner(business.id);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -92,6 +95,13 @@ export default async function EditBusinessPage({ params }: { params: { id: strin
           />
         </div>
       </section>
+
+      <BusinessDeals
+        businessId={business.id}
+        deals={deals}
+        limit={dealLimitFor(business.plan)}
+        isPro={pro}
+      />
     </div>
   );
 }

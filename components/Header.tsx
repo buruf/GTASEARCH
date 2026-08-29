@@ -27,6 +27,12 @@ export async function Header() {
             Near me
           </Link>
           <Link
+            href="/deals"
+            className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink lg:block"
+          >
+            Deals
+          </Link>
+          <Link
             href="/events"
             className="hidden rounded-btn px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink sm:block"
           >

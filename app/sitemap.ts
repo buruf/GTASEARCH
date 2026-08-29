@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // engine is how a site teaches Google its sitemap is unreliable.
     { url: `${BASE}/events`, changeFrequency: "daily" as const, priority: 0.7 },
     { url: `${BASE}/near-me`, changeFrequency: "monthly" as const, priority: 0.6 },
+    { url: `${BASE}/deals`, changeFrequency: "daily" as const, priority: 0.6 },
     // The classifieds section landing page (the pre-flip homepage).
     {
       url: `${BASE}/classifieds`,

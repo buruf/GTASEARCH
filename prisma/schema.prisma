@@ -260,6 +260,7 @@ model Business {
   claims    BusinessClaim[]
   reviews   Review[]
   events    Event[]
+  deals     Deal[]
 
   // Where the business actually is. Nullable because coverage depends on the
   // source: the regional directories and Toronto Public Health publish
@@ -298,6 +299,41 @@ model Business {
   @@index([category, city, status])
   @@index([city, status])
   @@index([claimedById])
+}
+
+/// A deal or coupon a business owner is offering — Phase 5D.
+///
+/// Only an owner can create one, and only on a business whose claim has been
+/// approved. GTASearch never writes a deal on a business's behalf: an invented
+/// discount sends someone to a shop expecting a price that does not exist,
+/// which is worse than having no deals at all.
+///
+/// Every deal expires. There is no such thing as a permanent offer here —
+/// an out-of-date coupon is the most common complaint about directory sites,
+/// so `endsAt` is required and every query filters on it.
+model Deal {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String
+  /// Optional code the customer quotes in store. Free text, never generated.
+  code        String?
+
+  startsAt DateTime @default(now())
+  endsAt   DateTime
+
+  /// "published" | "hidden" — hidden is the admin's moderation action, and is
+  /// the only way a deal is ever taken down other than by its owner.
+  status String @default("published")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // The listing query is "published, not expired, soonest to end first".
+  @@index([status, endsAt])
+  @@index([businessId, status])
 }
 
 /// A local event — Phase 5D.

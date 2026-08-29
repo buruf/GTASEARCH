@@ -183,3 +183,25 @@ export const ClaimSchema = z.object({
     .min(10, "Give us something checkable — a website, business number, or an email at the business's domain")
     .max(1000, "Keep this under 1000 characters"),
 });
+
+export const DealSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(4, "Give the deal a short title, e.g. \"15% off haircuts\"")
+    .max(80, "Keep the title under 80 characters"),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Say what the offer is and any conditions")
+    .max(600, "Keep the details under 600 characters"),
+  // Optional: plenty of real offers have no code at all.
+  code: z.string().trim().max(40, "Codes are at most 40 characters").optional().default(""),
+  endsAt: z
+    .string()
+    .trim()
+    .min(1, "Choose an end date")
+    // Parsed here rather than in the action so an unparseable date is a field
+    // error the person can see, not a 500.
+    .refine((s) => !Number.isNaN(Date.parse(s)), "That is not a valid date"),
+});

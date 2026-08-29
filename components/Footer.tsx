@@ -7,8 +7,8 @@ import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 // querying counts on every page render would be wasteful for a footer link
 // list. Only categories that actually hold businesses belong here: a footer
 // link to an empty browse page is a dead end for readers and a thin page for
-// crawlers. Revisit as curation fills the rest (health, home-services,
-// professional and fitness are still empty).
+// crawlers. Every category holds businesses now, so this list is a curation
+// choice about which six to surface, not a workaround for empty ones.
 const FOOTER_DIRECTORY_SLUGS = [
   "restaurants",
   "beauty",
@@ -40,6 +40,7 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm text-ink-muted">
               <li><Link href="/classifieds" className="hover:text-brand">Classifieds</Link></li>
               <li><Link href="/events" className="hover:text-brand">Events</Link></li>
+              <li><Link href="/deals" className="hover:text-brand">Deals</Link></li>
               <li><Link href="/near-me" className="hover:text-brand">Near me</Link></li>
               <li><Link href="/about" className="hover:text-brand">About</Link></li>
               <li><Link href="/contact" className="hover:text-brand">Contact</Link></li>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ImageGallery } from "@/components/ImageGallery";
 import { BusinessGrid } from "@/components/BusinessCard";
 import { getBusiness, similarBusinesses } from "@/lib/business";
+import { dealsForBusiness, dealTimeLeft } from "@/lib/deals";
 import {
   getBusinessCategoryLabel,
   getBusinessSubcategoryLabel,
@@ -56,6 +57,7 @@ export default async function BusinessProfilePage({
   );
   const cityLabel = getCityLabel(business.city);
 
+  const deals = await dealsForBusiness(business.id);
   const similar = await similarBusinesses(
     business.slug,
     business.category,
@@ -193,6 +195,39 @@ export default async function BusinessProfilePage({
         <div className="mt-6">
           <ImageGallery images={business.images} title={business.name} />
         </div>
+      )}
+
+      {deals.length > 0 && (
+        <section aria-labelledby="business-deals-heading" className="mt-8">
+          <h2 id="business-deals-heading" className="text-lg font-bold text-ink">
+            Current offers
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {deals.map((d) => (
+              <li key={d.id} className="rounded-card border border-brand bg-brand-50 p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-semibold text-ink">{d.title}</p>
+                  {dealTimeLeft(d.endsAt) && (
+                    <span className="text-xs font-semibold text-brand-dark">
+                      {dealTimeLeft(d.endsAt)}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-ink-muted">{d.description}</p>
+                {d.code && (
+                  <p className="mt-2 text-xs text-ink-faint">
+                    Code <span className="font-mono font-semibold text-ink">{d.code}</span>
+                  </p>
+                )}
+                {/* The end date is always shown. An offer without one is how
+                    people end up at a till holding an expired coupon. */}
+                <p className="mt-1 text-xs text-ink-faint">
+                  Ends {d.endsAt.toLocaleDateString("en-CA")} · posted by the business
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section aria-labelledby="business-description-heading" className="mt-6">
