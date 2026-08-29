@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { SearchBar } from "@/components/SearchBar";
+import { isClassifiedsPath } from "@/lib/header-nav";
 
 // The homepage (directory hub) and /classifieds each open with their own
 // large hero search; showing the header's compact one directly above it
@@ -49,12 +50,14 @@ export function HeaderSearch({ variant }: { variant: "desktop" | "mobile" }) {
   const pathname = usePathname();
   if (HIDDEN_ON.has(pathname)) return null;
 
-  const directoryContext =
-    pathname.startsWith("/directory") || pathname.startsWith("/biz/");
-  const search = directoryContext ? (
-    <CompactBusinessSearch />
-  ) : (
+  // Businesses unless you are actually in the classifieds. This was inverted
+  // before — only /directory and /biz searched businesses — so the search box
+  // on /near-me, /events and /about quietly searched the classifieds index and
+  // returned nothing for real business queries.
+  const search = isClassifiedsPath(pathname) ? (
     <SearchBar variant="compact" />
+  ) : (
+    <CompactBusinessSearch />
   );
 
   if (variant === "desktop") {

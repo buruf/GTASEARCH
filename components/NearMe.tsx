@@ -16,6 +16,7 @@ export function NearMe({ located, total }: { located: number; total: number }) {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [category, setCategory] = useState<string>("");
+  const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
   const [locating, setLocating] = useState(false);
 
@@ -23,6 +24,7 @@ export function NearMe({ located, total }: { located: number; total: number }) {
     at: { latitude: number; longitude: number },
     nextRadius = radiusKm,
     nextCategory = category,
+    nextQuery = query,
   ) {
     startTransition(async () => {
       const res = await searchNearbyAction({
@@ -30,6 +32,7 @@ export function NearMe({ located, total }: { located: number; total: number }) {
         longitude: at.longitude,
         radiusKm: nextRadius,
         category: nextCategory || undefined,
+        q: nextQuery.trim() || undefined,
       });
       if (res.error) {
         setError(res.error);
@@ -92,6 +95,49 @@ export function NearMe({ located, total }: { located: number; total: number }) {
         </p>
 
         {coords && (
+          <form
+            className="mt-4 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              run(coords);
+            }}
+          >
+            <label htmlFor="near-q" className="sr-only">
+              Search for a business near you
+            </label>
+            <input
+              id="near-q"
+              type="search"
+              value={query}
+              disabled={busy}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Shoppers Drug Mart, halal food, dentist…"
+              className="h-10 min-w-0 flex-1 rounded-btn border border-line bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="h-10 shrink-0 rounded-btn bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
+            >
+              Search
+            </button>
+            {query && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setQuery("");
+                  run(coords, radiusKm, category, "");
+                }}
+                className="h-10 shrink-0 rounded-btn border border-line px-3 text-sm font-medium text-ink-muted hover:text-ink"
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        )}
+
+        {coords && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <label htmlFor="near-radius" className="text-xs font-medium text-ink-muted">
               Within
@@ -149,16 +195,19 @@ export function NearMe({ located, total }: { located: number; total: number }) {
 
       {!pending && rows && rows.length === 0 && !error && (
         <p className="mt-6 text-sm text-ink-muted">
-          Nothing within {radiusKm} km
+          No {query ? <strong className="font-semibold text-ink">{query}</strong> : "businesses"}{" "}
+          within {radiusKm} km
           {category ? ` in ${getBusinessCategoryLabel(category)}` : ""}. Try a
-          wider radius.
+          wider radius{query ? ", or a different spelling" : ""}.
         </p>
       )}
 
       {!pending && rows && rows.length > 0 && (
         <>
           <p className="mt-6 text-sm text-ink-muted">
-            {count.toLocaleString("en-CA")} within {radiusKm} km, closest first
+            {count.toLocaleString("en-CA")}{" "}
+            {query ? <>matching &ldquo;{query}&rdquo;</> : "businesses"} within{" "}
+            {radiusKm} km, closest first
           </p>
           <ul className="mt-4 divide-y divide-line rounded-card border border-line bg-surface">
             {rows.map((b) => (

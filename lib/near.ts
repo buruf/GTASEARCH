@@ -41,7 +41,8 @@ export interface NearOptions {
   longitude: number;
   radiusKm?: number;
   category?: string;
-  openOnly?: boolean;
+  /** Free-text name search, e.g. "shoppers drug mart". */
+  q?: string;
   page?: number;
 }
 
@@ -95,6 +96,35 @@ export async function nearbyBusinesses(
 
   const categoryFilter = category ? Prisma.sql`AND category = ${category}` : Prisma.empty;
 
+  // Free-text filter, so "shoppers drug mart near me" works and not just
+  // "pharmacies near me". Uses the same generated tsvector the directory
+  // search uses (name weight A, description weight B), with a trigram
+  // similarity fallback on the name so a near-miss like "shopper drug mart"
+  // or "tim hortons" with a typo still finds the right shop.
+  //
+  // websearch_to_tsquery, not plainto_tsquery: plainto_ ANDs every word, and
+  // the template descriptions do not always contain the category words, so
+  // "halal food" missed shops named "... Halal Meat" whose description reads
+  // "Grocery in Brampton". websearch_ is more forgiving and understands
+  // quoted phrases if someone types them.
+  const term = opts.q?.trim();
+  // Trigram similarity is applied ONLY to single-word terms. On a multi-word
+  // query it matches any one word: "halal food" scored highly against "Tigers
+  // Korean Food" on the word "food" alone, putting a Korean restaurant at the
+  // top of a halal search. Multi-word terms therefore rely on the tsvector
+  // (which ANDs the words) or an exact phrase match on the name, and keep
+  // typo tolerance through stemming — "shopper drug mart" still finds
+  // Shoppers Drug Mart because both stem to "shopper".
+  const singleWord = term ? !/\s/.test(term) : false;
+  const textFilter =
+    term && term.length >= 2
+      ? Prisma.sql`AND (
+          "searchVector" @@ websearch_to_tsquery('english', ${term})
+          OR name ILIKE ${"%" + term + "%"}
+          ${singleWord ? Prisma.sql`OR word_similarity(${term}, name) > 0.55` : Prisma.empty}
+        )`
+      : Prisma.empty;
+
   // Haversine. Distance is computed once in the CTE and reused for both the
   // radius filter and the ordering, so it is never calculated twice per row.
   const withDistance = Prisma.sql`
@@ -112,6 +142,7 @@ export async function nearbyBusinesses(
       AND latitude BETWEEN ${latitude - latDelta} AND ${latitude + latDelta}
       AND longitude BETWEEN ${longitude - lngDelta} AND ${longitude + lngDelta}
       ${categoryFilter}
+      ${textFilter}
   `;
 
   // ONE round trip, not two. A separate COUNT query would re-run the same

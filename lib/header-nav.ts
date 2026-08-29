@@ -1,27 +1,32 @@
 /**
- * Which way the header's cross-section link points.
+ * Which half of the site a path belongs to.
  *
- * The site is two products sharing one shell: the business directory at `/`
- * and the classifieds at `/classifieds`. The link must always lead to the
- * section you are NOT in.
+ * GTASearch is two products in one shell: the business directory, which is now
+ * the homepage and the default, and the classifieds at /classifieds. This is
+ * the single place that decides which one you are in, used by both the header's
+ * cross-section link and the header's search box.
  *
- * This lives in lib rather than in the component so it can be unit-tested.
- * The bug it replaces was a hardcoded href — once you were inside the
- * classifieds the link pointed at the page you were already on, leaving the
- * logo as the only way back to the directory, and the logo does not say where
- * it goes. No test could have caught that; only clicking through would have.
+ * The direction matters and was originally backwards. After the homepage flip
+ * the directory became the default, but the header still treated it as the
+ * exception — so on /near-me, /events or /about the search box submitted to the
+ * classifieds index. Searching "halal food" there returned nothing, because
+ * the site has one classified listing, while the directory holds 55 matching
+ * businesses. Classifieds is the exception now; everything else is directory.
  */
 const CLASSIFIEDS_PREFIXES = ["/classifieds", "/search", "/listing", "/post-ad", "/saved"];
 
+export function isClassifiedsPath(pathname: string): boolean {
+  return CLASSIFIEDS_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 /**
- * usePathname() never includes the query string, so "/search?q=sofa" arrives
- * here as "/search" — matching the bare path is correct.
+ * The header link always leads to the section you are NOT in.
+ *
+ * usePathname() never returns the query string, so "/search?q=sofa" arrives
+ * here as "/search"; matching the bare path is correct.
  */
 export function sectionLinkFor(pathname: string): { href: string; label: string } {
-  const inClassifieds = CLASSIFIEDS_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
-  return inClassifieds
+  return isClassifiedsPath(pathname)
     ? { href: "/", label: "Businesses" }
     : { href: "/classifieds", label: "Classifieds" };
 }

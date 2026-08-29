@@ -26,6 +26,8 @@ export async function searchNearbyAction(input: {
   longitude: number;
   radiusKm: number;
   category?: string;
+  /** Free-text business name, e.g. "shoppers drug mart". */
+  q?: string;
   page?: number;
 }): Promise<NearState> {
   const { latitude, longitude } = input;
@@ -47,6 +49,9 @@ export async function searchNearbyAction(input: {
       longitude,
       radiusKm: input.radiusKm,
       category,
+      // Trimmed and length-capped here rather than trusted: this string
+      // reaches a tsquery and a trigram comparison.
+      q: input.q?.trim().slice(0, 80) || undefined,
       page: input.page,
     });
     return { rows, total };
