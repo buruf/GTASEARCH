@@ -13,6 +13,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { dealLimitFor, MAX_DEAL_DAYS } from "@/lib/plans";
+import { isPlausibleGtaPoint } from "@/lib/near";
 
 export class DealError extends Error {}
 
@@ -195,4 +196,99 @@ export function dealTimeLeft(endsAt: Date, now = new Date()): string {
   if (days === 2) return "Ends tomorrow";
   if (days <= 14) return `${days} days left`;
   return "";
+}
+
+/**
+ * Live deals near a point, closest first — the Flipp-style view, for the
+ * content GTASearch can legitimately carry.
+ *
+ * Same two-step shape as lib/near.ts: a bounding box the coordinate index can
+ * serve, then true great-circle distance on whatever survives it. Deals live
+ * on businesses, so the box filters the BUSINESS and the deal conditions ride
+ * along in the same pass.
+ *
+ * A business without coordinates can still run a deal — it simply will not
+ * appear in this view, and does appear on /deals unfiltered. Distance is never
+ * guessed from a postal code.
+ */
+export interface NearbyDeal {
+  id: string;
+  title: string;
+  description: string;
+  code: string | null;
+  endsAt: Date;
+  businessSlug: string;
+  businessName: string;
+  category: string;
+  city: string;
+  address: string;
+  distanceKm: number;
+}
+
+const KM_PER_DEG_LAT = 111.045;
+
+export async function nearbyDeals(opts: {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  q?: string;
+  now?: Date;
+}): Promise<{ rows: NearbyDeal[]; total: number }> {
+  const { latitude, longitude } = opts;
+  if (!isPlausibleGtaPoint(latitude, longitude)) return { rows: [], total: 0 };
+
+  const now = opts.now ?? new Date();
+  const radiusKm = Math.min(25, Math.max(1, opts.radiusKm ?? 5));
+  const latDelta = radiusKm / KM_PER_DEG_LAT;
+  const lngDelta = radiusKm / (KM_PER_DEG_LAT * Math.cos((latitude * Math.PI) / 180));
+
+  const term = opts.q?.trim();
+  // Matches the deal's own wording as well as the shop's name, so "tires"
+  // finds a tire offer and "Canadian Tire" finds the shop.
+  const textFilter =
+    term && term.length >= 2
+      ? Prisma.sql`AND (
+          d.title ILIKE ${"%" + term + "%"}
+          OR d.description ILIKE ${"%" + term + "%"}
+          OR b.name ILIKE ${"%" + term + "%"}
+          OR b."searchVector" @@ websearch_to_tsquery('english', ${term})
+        )`
+      : Prisma.empty;
+
+  const rows = await db.$queryRaw<(NearbyDeal & { total: bigint })[]>(Prisma.sql`
+    WITH nearby AS (
+      SELECT
+        d.id, d.title, d.description, d.code, d."endsAt",
+        b.slug AS "businessSlug", b.name AS "businessName",
+        b.category, b.city, b.address,
+        2 * 6371 * asin(sqrt(
+          power(sin(radians(b.latitude - ${latitude}) / 2), 2)
+          + cos(radians(${latitude})) * cos(radians(b.latitude))
+          * power(sin(radians(b.longitude - ${longitude}) / 2), 2)
+        )) AS "distanceKm"
+      FROM "Deal" d
+      JOIN "Business" b ON b.id = d."businessId"
+      WHERE d.status = 'published'
+        AND d."startsAt" <= ${now}
+        AND d."endsAt" > ${now}
+        AND b.status = 'active'
+        AND b.latitude IS NOT NULL
+        AND b.longitude IS NOT NULL
+        AND b.latitude BETWEEN ${latitude - latDelta} AND ${latitude + latDelta}
+        AND b.longitude BETWEEN ${longitude - lngDelta} AND ${longitude + lngDelta}
+        ${textFilter}
+    )
+    SELECT *, COUNT(*) OVER()::bigint AS total
+    FROM nearby
+    WHERE "distanceKm" <= ${radiusKm}
+    -- Closest first; id breaks ties so two deals at one address do not
+    -- shuffle between loads.
+    ORDER BY "distanceKm" ASC, id ASC
+    LIMIT ${DEALS_PAGE_SIZE}
+  `);
+
+  return {
+    rows: rows.map(({ total: _t, ...r }) => r),
+    total: rows.length ? Number(rows[0].total) : 0,
+  };
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DealGrid } from "@/components/DealCard";
+import { DealsNearMe } from "@/components/DealsNearMe";
 import { DirectoryPagination } from "@/app/directory/_components/DirectoryPagination";
 import { liveDeals, DEALS_PAGE_SIZE } from "@/lib/deals";
 import { CITIES, getCityLabel, cityRank } from "@/lib/cities";
@@ -55,6 +56,10 @@ export default async function DealsPage({ searchParams }: Props) {
         {city ? `Deals in ${getCityLabel(city)}` : "Deals and coupons across the GTA"}
         {category ? ` — ${getBusinessCategoryLabel(category)}` : ""}
       </h1>
+
+      <div className="mt-5">
+        <DealsNearMe />
+      </div>
 
       {total === 0 ? (
         // Honest empty state. Every deal here is written by a business owner,

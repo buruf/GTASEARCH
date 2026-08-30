@@ -12,6 +12,7 @@ import {
   dealsForOwner,
   liveDeals,
   dealTimeLeft,
+  nearbyDeals,
   DealError,
 } from "@/lib/deals";
 import { FREE_DEAL_LIMIT, MAX_DEAL_DAYS } from "@/lib/plans";
@@ -171,5 +172,122 @@ describe("dealTimeLeft", () => {
     // Far off: no badge, because "in 60 days" is not urgency.
     expect(dealTimeLeft(new Date("2026-11-01T12:00:00Z"), now)).toBe("");
     expect(dealTimeLeft(new Date("2026-08-30T12:00:00Z"), now)).toBe("Ended");
+  });
+});
+
+describe("deals near me", () => {
+  // Open water south of Toronto: inside the GTA bounding box but far from any
+  // real business, so only these fixtures can match.
+  const CENTRE = { latitude: 43.44, longitude: -79.44 };
+
+  let closeId = "";
+  let farId = "";
+
+  beforeAll(async () => {
+    const base = {
+      description: "Test fixture.",
+      category: "restaurants",
+      city: "toronto",
+      address: "1 Vitest Way",
+      source: "curated",
+      status: "active",
+    };
+    // ~0.3km away.
+    const close = await db.business.create({
+      data: {
+        ...base,
+        slug: `${PREFIX}near-close`,
+        name: "Vitest Close Cafe",
+        latitude: 43.4425,
+        longitude: -79.4425,
+      },
+    });
+    // ~8km away — outside a 5km radius, inside 25km.
+    const far = await db.business.create({
+      data: {
+        ...base,
+        slug: `${PREFIX}near-far`,
+        name: "Vitest Far Cafe",
+        latitude: 43.512,
+        longitude: -79.44,
+      },
+    });
+    // A business with a deal but NO coordinates: must never appear here, and
+    // must still appear on the unfiltered /deals list.
+    const nowhere = await db.business.create({
+      data: { ...base, slug: `${PREFIX}near-nocoords`, name: "Vitest Nowhere Cafe" },
+    });
+
+    closeId = close.id;
+    farId = far.id;
+
+    for (const [bid, title] of [
+      [close.id, "Free coffee nearby"],
+      [far.id, "Free coffee far away"],
+      [nowhere.id, "Free coffee unplaced"],
+    ] as const) {
+      await db.deal.create({
+        data: {
+          businessId: bid,
+          title,
+          description: "Fixture deal.",
+          startsAt: inDays(-1),
+          endsAt: inDays(7),
+        },
+      });
+    }
+  });
+
+  it("returns the closest deal first, with a distance", async () => {
+    const { rows } = await nearbyDeals({ ...CENTRE, radiusKm: 25 });
+    const titles = rows.map((r) => r.title);
+    expect(titles.indexOf("Free coffee nearby")).toBeLessThan(
+      titles.indexOf("Free coffee far away"),
+    );
+    const close = rows.find((r) => r.title === "Free coffee nearby");
+    expect(close?.distanceKm).toBeLessThan(1);
+  });
+
+  it("excludes deals beyond the radius", async () => {
+    const { rows } = await nearbyDeals({ ...CENTRE, radiusKm: 5 });
+    const titles = rows.map((r) => r.title);
+    expect(titles).toContain("Free coffee nearby");
+    expect(titles).not.toContain("Free coffee far away");
+  });
+
+  // A missing pin must never become a guessed one.
+  it("omits deals whose business has no coordinates", async () => {
+    const { rows } = await nearbyDeals({ ...CENTRE, radiusKm: 25 });
+    expect(rows.map((r) => r.title)).not.toContain("Free coffee unplaced");
+    // But it is still on the ordinary list.
+    const all = await liveDeals({ city: "toronto" });
+    expect(all.rows.map((d) => d.title)).toContain("Free coffee unplaced");
+  });
+
+  it("filters by keyword against the deal and the business", async () => {
+    const byDeal = await nearbyDeals({ ...CENTRE, radiusKm: 25, q: "coffee" });
+    expect(byDeal.rows.length).toBeGreaterThanOrEqual(2);
+    const byBusiness = await nearbyDeals({ ...CENTRE, radiusKm: 25, q: "Vitest Close" });
+    expect(byBusiness.rows.map((r) => r.title)).toContain("Free coffee nearby");
+  });
+
+  it("never returns an expired deal", async () => {
+    await db.deal.create({
+      data: {
+        businessId: closeId,
+        title: "Expired nearby offer",
+        description: "Gone.",
+        startsAt: inDays(-10),
+        endsAt: inDays(-1),
+      },
+    });
+    const { rows } = await nearbyDeals({ ...CENTRE, radiusKm: 25 });
+    expect(rows.map((r) => r.title)).not.toContain("Expired nearby offer");
+  });
+
+  it("returns nothing for a point outside the GTA", async () => {
+    const { rows, total } = await nearbyDeals({ latitude: 51.5074, longitude: -0.1278, radiusKm: 25 });
+    expect(rows).toHaveLength(0);
+    expect(total).toBe(0);
   });
 });
