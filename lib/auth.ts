@@ -30,17 +30,31 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Email and password",
       credentials: { email: { label: "Email" }, password: { label: "Password", type: "password" } },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         const email = credentials?.email?.toLowerCase().trim();
         const password = credentials?.password;
         if (!email || !password) return null;
 
-        // Per-email attempt cap, ahead of any DB lookup. Keyed by email (not
-        // IP) because authorize() has no reliable IP here; 10 attempts per
-        // 15 minutes is enough to blunt credential stuffing / brute force
-        // without locking out a user who simply mistypes a password a few
-        // times. Refusal returns the same generic null the UI already shows
-        // for bad credentials, so it doesn't reveal that a limit exists.
+        // TWO caps, because they stop different attacks.
+        //
+        // Per-IP first: a credential-stuffing run tries thousands of DIFFERENT
+        // emails a few times each, so a per-email cap never fires. Production
+        // logs on 2026-09-05 showed exactly that shape — 181 hits on
+        // /auth/signin and 21 credential callbacks in six hours against a site
+        // with six users. NextAuth passes the request to authorize(), so the
+        // forwarded IP IS available here; an earlier comment claiming
+        // otherwise was wrong.
+        //
+        // Per-email second: stops one account being ground down from many
+        // addresses.
+        //
+        // Both refuse with the same generic null the UI shows for bad
+        // credentials, so neither reveals that a limit exists.
+        const ip = req?.headers?.["x-forwarded-for"]?.split(",")[0]?.trim();
+        if (ip && !rateLimit(`signin-ip:${ip}`, 20, 15 * 60 * 1000)) return null;
+
+        // 10 attempts per 15 minutes is enough to blunt brute force without
+        // locking out a user who mistypes a password a few times.
         if (!rateLimit(`signin:${email}`, 10, 15 * 60 * 1000)) return null;
 
         const user = await db.user.findUnique({ where: { email } });
