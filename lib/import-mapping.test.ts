@@ -12,6 +12,7 @@ import {
   religionSubcategory,
   subcategoryFromName,
   NAME_MARKERS,
+  SLUG_TIERS,
   normalizeWebsite,
   preferOperatingName,
   repairMojibake,
@@ -162,6 +163,70 @@ describe("import helpers", () => {
     // A genuine house cleaner still resolves.
     expect(subcategoryFromName("home-services", "Maple Cleaning Services")).toBe("cleaning");
     expect(subcategoryFromName("home-services", "AAA Janitorial")).toBe("cleaning");
+  });
+
+  // Cuisines, added Sep 2026. The category previously described only the FORM
+  // a food business takes, so 46% of all restaurants had no subcategory.
+  it("reads a cuisine from the name", () => {
+    expect(subcategoryFromName("restaurants", "Chaska Indian Street Food")).toBe("indian");
+    expect(subcategoryFromName("restaurants", "Unu Banh Mi")).toBe("vietnamese");
+    expect(subcategoryFromName("restaurants", "Pho Le")).toBe("vietnamese");
+    expect(subcategoryFromName("restaurants", "One Sushi & Rolls")).toBe("japanese");
+    expect(subcategoryFromName("restaurants", "Taqueria El Pastorcito")).toBe("mexican");
+    expect(subcategoryFromName("restaurants", "Freddy's Greek Restaurant")).toBe("greek");
+    expect(subcategoryFromName("restaurants", "Aljood Middle Eastern Cuisine")).toBe("middle-eastern");
+    expect(subcategoryFromName("restaurants", "Biryani Flames")).toBe("indian");
+    // A dish name carries the cuisine even with no nationality in the name.
+    expect(subcategoryFromName("restaurants", "Kimchi House")).toBe("korean");
+    // "West Indian" is the Caribbean. Caught in a sample review of what the
+    // backfill was about to write, where a real Scarborough jerk restaurant
+    // was on its way to being filed under Indian food.
+    expect(subcategoryFromName("restaurants", "Good Vibes West Indian Restaurant")).toBe("caribbean");
+    // ...but "East Indian" really does mean India.
+    expect(subcategoryFromName("restaurants", "Bombay East Indian Cuisine")).toBe("indian");
+  });
+
+  // A chain's name IS its identity, and chains carry many locations each.
+  it("recognises chains, and only at the start of the name", () => {
+    expect(subcategoryFromName("restaurants", "Subway")).toBe("fast-food");
+    expect(subcategoryFromName("restaurants", "A&W")).toBe("fast-food");
+    expect(subcategoryFromName("restaurants", "Tim Hortons")).toBe("coffee-tea");
+    // Two rules agreeing is not a conflict: the chain rule and the generic
+    // "pizza" rule both fire here, and the row must still resolve.
+    expect(subcategoryFromName("restaurants", "Pizza Nova")).toBe("pizza");
+    // Anchored, so a chain word buried mid-name does not hijack the row.
+    expect(subcategoryFromName("restaurants", "Bombay Subway Grill")).toBeNull();
+  });
+
+  // The reason SLUG_TIERS exists: these names are not ambiguous, they are
+  // doubly true, and refusing to choose would throw the rows away.
+  it("prefers halal, then form, then cuisine, then fast-food", () => {
+    // Halal outranks the cuisine: it is the scarcer, higher-intent filter, and
+    // the cuisine is still reachable by name search.
+    expect(subcategoryFromName("restaurants", "Halal Indian Cuisine")).toBe("halal");
+    expect(subcategoryFromName("restaurants", "Halal Shawarma Palace")).toBe("halal");
+    // A Portuguese bakery is somewhere you buy bread; the origin describes
+    // the bread, so form wins.
+    expect(subcategoryFromName("restaurants", "Portuguese Bakery")).toBe("bakeries");
+    expect(subcategoryFromName("restaurants", "Chinese Bakery & Cafe")).toBeNull(); // bakery OR cafe
+    // Cuisine beats the vaguest tier.
+    expect(subcategoryFromName("restaurants", "Indian Take Out")).toBe("indian");
+    // Two readings inside ONE tier is real ambiguity and still resolves to
+    // nothing — the original rule, preserved.
+    expect(subcategoryFromName("restaurants", "Pizza Nova Cafe")).toBeNull();
+    expect(subcategoryFromName("restaurants", "Thai Sushi Bar")).toBeNull();
+  });
+
+  // A slug missing from every tier would be silently unreachable: the tier
+  // loop would skip it and the row would resolve to null forever.
+  it("places every tiered category's markers in exactly one tier", () => {
+    for (const [categorySlug, tiers] of Object.entries(SLUG_TIERS)) {
+      const flat = tiers.flat();
+      expect(new Set(flat).size, `${categorySlug} repeats a slug across tiers`).toBe(flat.length);
+      for (const [sub] of NAME_MARKERS[categorySlug]) {
+        expect(flat.includes(sub), `${categorySlug}/${sub} is in no tier`).toBe(true);
+      }
+    }
   });
 
   // The guard that makes the table safe to extend: a mistyped slug would

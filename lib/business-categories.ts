@@ -30,6 +30,30 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { slug: "fine-dining", label: "Fine Dining" },
       { slug: "grocery", label: "Grocery" },
       { slug: "dessert", label: "Dessert" },
+      // Cuisines, added Sep 2026. Until then this category described only the
+      // FORM a food business takes — pizzeria, bakery, café — and said nothing
+      // about where the food is from, in the most cuisine-diverse region in
+      // the country. The consequence was measurable: 9,872 restaurants, 46% of
+      // every restaurant in the directory, had no subcategory at all, because
+      // "Chaska Indian Street Food" and thousands like it had nowhere to go.
+      //
+      // Listed after the form subcategories and alphabetical among themselves;
+      // the chips render in this order and are count-gated, so a cuisine with
+      // no businesses in a given city never appears.
+      { slug: "african", label: "African" },
+      { slug: "caribbean", label: "Caribbean" },
+      { slug: "chinese", label: "Chinese" },
+      { slug: "filipino", label: "Filipino" },
+      { slug: "greek", label: "Greek" },
+      { slug: "indian", label: "Indian" },
+      { slug: "italian", label: "Italian" },
+      { slug: "japanese", label: "Japanese" },
+      { slug: "korean", label: "Korean" },
+      { slug: "mexican", label: "Mexican" },
+      { slug: "middle-eastern", label: "Middle Eastern" },
+      { slug: "portuguese", label: "Portuguese" },
+      { slug: "thai", label: "Thai" },
+      { slug: "vietnamese", label: "Vietnamese" },
     ],
   },
   {
