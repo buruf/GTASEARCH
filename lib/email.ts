@@ -106,7 +106,16 @@ export async function sendClaimSubmittedEmail(
   return deliver(
     to,
     `Claim submitted: ${args.businessName}`,
-    `${args.claimantName} (${args.role}) claimed "${args.businessName}", ${args.businessAddress}.\n\nAccount: ${args.claimantEmail}\n\nEvidence given:\n${args.evidence}\n\nReview it here:\n${process.env.NEXTAUTH_URL ?? ""}/admin/claims\n\nApproving hands the listing over and turns on its verified badge, so check the evidence against the business's own website first.`,
+    // The "Sign in as" line is not a nicety. /admin/claims calls requireAdmin(),
+    // which returns a bare 404 — deliberately, so a stranger cannot confirm the
+    // route exists. But the admin arriving from THIS email gets that same blank
+    // 404 whenever their session is any account other than ADMIN_EMAIL, with
+    // nothing to say which of the two things went wrong. That happened on the
+    // first claim GTASearch ever received: ADMIN_EMAIL held one address and the
+    // owner's actual account was registered under another, so the queue simply
+    // looked broken. This email goes only to the admin, so naming the account
+    // leaks nothing and turns a dead end into a self-diagnosing one.
+    `${args.claimantName} (${args.role}) claimed "${args.businessName}", ${args.businessAddress}.\n\nAccount: ${args.claimantEmail}\n\nEvidence given:\n${args.evidence}\n\nReview it here:\n${process.env.NEXTAUTH_URL ?? ""}/admin/claims\n\nSign in as ${to}. The admin pages return a plain 404 for any other account — including your own, if it is registered under a different address than ADMIN_EMAIL.\n\nApproving hands the listing over and turns on its verified badge, so check the evidence against the business's own website first.`,
   );
 }
 
