@@ -100,11 +100,7 @@ export default async function DirectorySearchPage({
           )}
 
           {rows.length === 0 ? (
-            <p className="mt-6 text-sm text-ink-muted">
-              {filters.q
-                ? `We couldn't find any businesses for "${filters.q}" with those filters.`
-                : "No businesses match those filters."}
-            </p>
+            <MissingBusiness query={filters.q} />
           ) : (
             <>
               <div className="mt-5">
@@ -115,6 +111,15 @@ export default async function DirectorySearchPage({
                 totalPages={totalPages}
                 buildHref={(p) => buildDirectorySearchUrl(filters, { page: p })}
               />
+              {/* Results are not the same thing as THE result. Searching a
+                  business name we do not hold still returns everything that
+                  shares a word with it — "Etobicoke Automotive Group" brings
+                  back nine other auto shops — so a visitor sees a full page
+                  and concludes the business does not exist, when in fact we
+                  never had it. Only the person searching knows the difference,
+                  so the way to hear about a gap is to ask here, on a page that
+                  looks successful. */}
+              {filters.q && <MissingBusiness query={filters.q} compact />}
             </>
           )}
         </section>
@@ -200,5 +205,75 @@ function DirectoryFilterForm({
         Apply filters
       </button>
     </form>
+  );
+}
+
+/**
+ * The dead end, made honest and actionable.
+ *
+ * A search that finds nothing used to say only "we couldn't find any
+ * businesses", which reads as "this business does not exist" — but the far
+ * likelier truth is that it exists and we do not have it. The Toronto half of
+ * the directory is built from the City's business LICENCE register, which
+ * covers licensed trades (garages, food premises, salons) and nothing else,
+ * so an office, a dealership or a firm that needs no municipal licence is
+ * invisible to us no matter how established it is.
+ *
+ * Saying so costs nothing and buys trust; leaving the visitor somewhere to
+ * send the name turns a failed search into the only thing that can actually
+ * fix it, since a missing business is a data-coverage problem and we cannot
+ * find out about it any other way.
+ */
+function MissingBusiness({ query, compact = false }: { query?: string; compact?: boolean }) {
+  const subject = query
+    ? `Missing business: ${query}`
+    : "Missing business on GTASearch";
+  const body = query
+    ? `I searched GTASearch for "${query}" and couldn't find it.\n\nBusiness name:\nAddress:\nPhone or website:\n`
+    : `Business name:\nAddress:\nPhone or website:\n`;
+  const mailto = `mailto:support@gtasearch.com?subject=${encodeURIComponent(
+    subject,
+  )}&body=${encodeURIComponent(body)}`;
+
+  // Under a page of results this is a footnote, not an announcement: the
+  // search worked for most people, and shouting about a possible gap on every
+  // successful page would undermine the results above it.
+  if (compact) {
+    return (
+      <p className="mt-8 border-t border-line pt-4 text-sm text-ink-muted">
+        Not the business you meant?{" "}
+        <a href={mailto} className="font-medium text-brand hover:underline">
+          Tell us what&rsquo;s missing
+        </a>{" "}
+        &mdash; Toronto listings come from the City&rsquo;s licence register,
+        so unlicensed trades can be absent.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-6 rounded-card border border-line bg-surface-alt p-5">
+      <p className="text-sm text-ink">
+        {query
+          ? `We couldn't find any businesses for "${query}" with those filters.`
+          : "No businesses match those filters."}
+      </p>
+      <p className="mt-3 max-w-2xl text-sm text-ink-muted">
+        That may mean we simply don&rsquo;t have it yet. Toronto listings come
+        from the City&rsquo;s business licence register, so trades that need no
+        municipal licence &mdash; offices, dealerships, many professional firms
+        &mdash; are missing from it. See{" "}
+        <a href="/data-sources" className="text-brand hover:underline">
+          where our data comes from
+        </a>
+        .
+      </p>
+      <a
+        href={mailto}
+        className="mt-4 inline-block rounded-btn bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+      >
+        Tell us about a missing business
+      </a>
+    </div>
   );
 }

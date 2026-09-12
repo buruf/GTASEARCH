@@ -1,8 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-// Statically imported so Next knows the intrinsic size at build time and can
-// generate the blur placeholder — neither works with a bare "/path" string.
-import heroPhoto from "@/public/toronto-hero.jpg";
+import { PhotoHero } from "@/components/PhotoHero";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BusinessGrid } from "@/components/BusinessCard";
 import { ListingGrid } from "@/components/ListingCard";
@@ -123,61 +120,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero: the owner's own aerial photograph of downtown Toronto, taken
-          from a plane (so there is no licence question and no attribution to
-          carry — see docs/data-sources or ask before ever swapping it for
-          stock). It replaces the illustrated skyline, which read as a
-          placeholder beside real photography.
-
-          Contrast: the photo is bright at the top (sky and frozen lake) and
-          busy everywhere, so white text on it would fail WCAG on its own. The
-          scrim below is a fixed dark gradient, strongest exactly where the
-          headline and subhead sit, which keeps white text well past AA no
-          matter which part of the image a given viewport crops to. */}
-      <section className="relative overflow-hidden bg-[#0B1F2E]">
-        <Image
-          src={heroPhoto}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          placeholder="blur"
-          // 55, not the 75 default, because this image is viewed through a
-          // 60% black scrim that hides the compression artefacts which would
-          // make 55 unacceptable on a photo shown plainly.
-          //
-          // It does NOT buy back the Lighthouse score, and it was wrong of me
-          // to assume it would: measured on production, mobile performance is
-          // 98 with LCP 2.3s at BOTH q=55 and q=72. The remaining half-second
-          // is the round trip for an above-the-fold image at all, not its
-          // weight. Kept anyway on the honest ground it does help — 69KB
-          // versus 82KB at 828w, ~16% less to pull on a slow connection, even
-          // though the score bucket does not move.
-          quality={55}
-          // Framing, worked out from the source rather than by eye. The hero
-          // band is ~3.4:1 and the photo is 4:3, so object-cover shows only
-          // about 39% of the image's height. In the original the CN Tower
-          // spans roughly 31–51% down and the downtown core 39–59%; anchoring
-          // at 65% put the visible window at 45–85%, which cut the tower off
-          // at the top edge and filled the band with the residential grid.
-          // 42% centres the window on the skyline itself.
-          className="object-cover object-[center_42%]"
-        />
-        <div
-          aria-hidden="true"
-          // 60% is the floor, not a preference: against the brightest thing
-          // the crop can put behind the subhead, it holds white text at about
-          // 5.7:1, where 55% measured ~3.96:1 and failed the 4.5:1 AA floor.
-          // Worst-case is the right test because the crop — and so what sits
-          // behind the text — changes with every viewport.
-          //
-          // The top stop was 75%, which buried the photo: the whole point of
-          // real photography is that you can tell it is Toronto. Dropped to
-          // 60% so the lake and skyline read, which is safe because the only
-          // thing up there is the h1, and large bold text needs 3:1, not 4.5.
-          className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/60 to-black/70"
-        />
-        <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-10 text-center sm:pb-32 sm:pt-14">
+      <PhotoHero className="pb-24 pt-10 sm:pb-32 sm:pt-14">
           {/* text-balance evens the two lines out; without it the break fell
               after "Greater", stranding it away from "Toronto Area". */}
           <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm [text-wrap:balance] sm:text-5xl">
@@ -331,8 +274,7 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
-        </div>
-      </section>
+      </PhotoHero>
 
       <div className="mx-auto max-w-7xl px-4 py-10">
         <section aria-labelledby="directory-categories-heading">

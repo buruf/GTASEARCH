@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchBar } from "@/components/SearchBar";
-import { TorontoSkyline } from "@/components/TorontoSkyline";
+import { PhotoHero } from "@/components/PhotoHero";
 import { CategoryGrid } from "@/components/CategoryGrid";
 import { ListingGrid } from "@/components/ListingCard";
 import { categoryCounts, featuredListings, recentListings } from "@/lib/search";
@@ -33,25 +33,22 @@ export default async function ClassifiedsPage() {
 
   return (
     <>
-      {/* Sky gradient + illustrated Toronto skyline. Text sits on the light
-          upper sky, so contrast stays WCAG-clean; the search card is solid
-          white and reads fine over the buildings. */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#D9EAF8] via-[#E9F3FB] to-[#F4F9FD]">
-        <TorontoSkyline className="pointer-events-none absolute bottom-0 left-0 h-24 w-full sm:h-32" />
-        <div className="relative mx-auto max-w-5xl px-4 pb-16 pt-10 text-center sm:pb-20 sm:pt-14">
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            Buy, sell, and find anything in the{" "}
-            <span className="text-brand-dark">Greater Toronto Area</span>
-          </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-ink-muted sm:text-base">
-            Thousands of local listings across Toronto, Mississauga, Brampton,
-            Markham and every city in the GTA.
-          </p>
-          <div className="mt-6">
-            <SearchBar variant="hero" />
-          </div>
+      {/* Same photographic hero as the directory. Classifieds used to sit on
+          an illustrated skyline over a pale blue gradient — the pre-pivot
+          design — so the two halves of the site looked unrelated. */}
+      <PhotoHero>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm [text-wrap:balance] sm:text-5xl">
+          Buy, sell, and find anything in the{" "}
+          <span className="text-brand-light">Greater Toronto Area</span>
+        </h1>
+        <p className="mx-auto mt-4 max-w-2xl text-base text-white sm:text-lg">
+          Free local listings across Toronto, Mississauga, Brampton, Markham
+          and every city in the GTA.
+        </p>
+        <div className="mt-8">
+          <SearchBar variant="hero" />
         </div>
-      </section>
+      </PhotoHero>
 
       <div className="mx-auto max-w-7xl px-4 py-10">
         <section aria-labelledby="categories-heading">
