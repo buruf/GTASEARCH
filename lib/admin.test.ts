@@ -21,4 +21,20 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail(undefined)).toBe(false);
     expect(isAdminEmail("")).toBe(false);
   });
+
+  // The Header now feeds this straight into UserMenu's `isAdmin`, which draws
+  // the only link to /admin anywhere on the site. A true for the wrong person
+  // would not grant access — requireAdmin() still 404s them and every action
+  // re-checks — but it would advertise that the console exists, which the
+  // 404-not-403 rule exists to avoid. Signed-in-but-not-admin is the case that
+  // matters, because that is everyone who can see a UserMenu at all.
+  it("keeps the admin link hidden from an ordinary signed-in user", () => {
+    process.env.ADMIN_EMAIL = "owner@example.com";
+    expect(isAdminEmail("someone-else@example.com")).toBe(false);
+    // Near-misses must not pass: same local part on another domain, and the
+    // owner's own second account registered under a different address — the
+    // exact shape that made the first real claim look unreachable.
+    expect(isAdminEmail("owner@example.org")).toBe(false);
+    expect(isAdminEmail("owner1@example.com")).toBe(false);
+  });
 });

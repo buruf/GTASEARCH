@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { unreadCountFor } from "@/lib/messages";
 import { Logo } from "@/components/Logo";
 import { HeaderSearch } from "@/components/HeaderSearch";
@@ -40,7 +41,11 @@ export async function Header() {
           </Link>
           <HeaderSectionLink variant="desktop" />
           {session?.user ? (
-            <UserMenu name={session.user.name ?? "Account"} unread={unread} />
+            <UserMenu
+              name={session.user.name ?? "Account"}
+              unread={unread}
+              isAdmin={isAdminEmail(session.user.email)}
+            />
           ) : (
             <Link
               href="/auth/signin"

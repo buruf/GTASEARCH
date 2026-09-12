@@ -5,7 +5,26 @@ import { signOut } from "next-auth/react";
 import { useState } from "react";
 import { formatUnreadCount } from "@/lib/format";
 
-export function UserMenu({ name, unread }: { name: string; unread: number }) {
+/**
+ * `isAdmin` is decided on the server (Header) and passed in, never derived
+ * here: this is a client component, so any rule it applied would ship to every
+ * visitor and advertise what makes someone an admin.
+ *
+ * The link exists because the admin console had NO entry point anywhere outside
+ * itself — the tab bar lives in app/admin/layout.tsx, which only renders once
+ * you are already inside /admin. Reviewing the first claim GTASearch ever
+ * received meant signing in correctly, landing on the ordinary dashboard, and
+ * reasonably concluding the admin access had failed.
+ */
+export function UserMenu({
+  name,
+  unread,
+  isAdmin = false,
+}: {
+  name: string;
+  unread: number;
+  isAdmin?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const first = name.split(" ")[0];
   const badgeText = formatUnreadCount(unread);
@@ -28,6 +47,15 @@ export function UserMenu({ name, unread }: { name: string; unread: number }) {
           </Link>
           <Link href="/dashboard" className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt" onClick={() => setOpen(false)}>Dashboard</Link>
           <Link href="/dashboard/business" className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt" onClick={() => setOpen(false)}>My businesses</Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="block border-t border-line px-4 py-2 text-sm font-semibold text-brand hover:bg-surface-alt"
+              onClick={() => setOpen(false)}
+            >
+              Admin
+            </Link>
+          )}
           <button type="button" onClick={() => signOut({ callbackUrl: "/" })}
             className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-surface-alt">
             Sign out
