@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { canonicalEmail } from "@/lib/email-identity";
 
 const BCRYPT_COST = 12;
 
@@ -27,13 +28,20 @@ export async function createUser(input: {
   try {
     await db.user.create({
       data: {
+        // emailCanonical is deliberately absent: Postgres generates it from
+        // this address, so writing it here would be rejected — and no caller,
+        // including NextAuth's Google adapter, has to know it exists.
         email: input.email,
         name: `${input.firstName} ${input.lastName}`.trim(),
         passwordHash,
       },
     });
   } catch (e: unknown) {
-    // P2002 = unique violation on email. Swallow deliberately.
+    // P2002 = unique violation, on `email` OR on the generated
+    // `emailCanonical` — an alias of an inbox that already has an account
+    // lands here and creates nothing. Swallowed deliberately: the response is
+    // identical either way, so sign-up still never reveals which addresses
+    // already have accounts.
     const code = (e as { code?: string }).code;
     if (code !== "P2002") throw e;
   }

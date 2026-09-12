@@ -23,6 +23,10 @@ export function AuthForms({ tab, googleOn }: { tab: "signin" | "register"; googl
   const callbackUrl = safeCallbackUrl(params.get("callbackUrl"));
   const [signinError, setSigninError] = useState<string | null>(null);
   const [state, formAction] = useFormState<FormState, FormData>(registerAction, { ok: false });
+  // Stamped once when the form mounts, not on every render, so the elapsed
+  // time measures how long the visitor had the form — not how long since React
+  // last re-rendered it. useState's initialiser runs exactly once.
+  const [renderedAt] = useState(() => String(Date.now()));
 
   async function onSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,6 +72,21 @@ export function AuthForms({ tab, googleOn }: { tab: "signin" | "register"; googl
         </div>
       ) : (
         <form action={formAction} className="mt-4">
+          {/* Two signals a person never notices and a naive bot usually trips.
+              `website` is a honeypot: positioned off-screen rather than
+              display:none (which some bots skip), hidden from assistive tech,
+              and out of tab order and autofill — any value at all means
+              automation. `renderedAt` is when the form reached the browser; a
+              submission arriving within two seconds was not typed.
+              Neither is trusted alone, since both come from the client. The
+              guarantee is the unique index on the generated emailCanonical
+              column, which no client input can talk its way past. */}
+          <div aria-hidden="true" className="absolute left-[-9999px] h-px w-px overflow-hidden">
+            <label htmlFor="website">Website (leave this empty)</label>
+            <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+          </div>
+          <input type="hidden" name="renderedAt" value={renderedAt} />
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={label} htmlFor="firstName">First name</label>

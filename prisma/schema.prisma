@@ -17,6 +17,13 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
+  // The mailbox "email" actually reaches: Gmail dots and +tags removed.
+  // Unique, so one inbox cannot hold several accounts. See
+  // lib/email-identity.ts and the 20260912150000 migration.
+  // Postgres GENERATES this from `email` (Gmail dots and +tags removed), so
+  // nothing may write it — it is optional here only so no caller has to.
+  // Unique, so one inbox cannot hold several accounts.
+  emailCanonical String?  @unique
   name          String
   phone         String?
   passwordHash  String?
