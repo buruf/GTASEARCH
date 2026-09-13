@@ -9,9 +9,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const tab = "rounded-btn px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-alt hover:text-ink";
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="flex items-center gap-2 border-b border-line pb-3">
+      {/* Wraps rather than overflowing: six tabs now, and this console is
+          opened on a phone as often as anything else on the site. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
         <h1 className="mr-4 text-xl font-bold text-ink">Admin</h1>
         <Link href="/admin" className={tab}>Overview</Link>
+        <Link href="/admin/users" className={tab}>Users</Link>
         <Link href="/admin/reports" className={tab}>Reports</Link>
         <Link href="/admin/listings" className={tab}>Listings</Link>
         <Link href="/admin/claims" className={tab}>Claims</Link>

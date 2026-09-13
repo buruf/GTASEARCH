@@ -7,6 +7,7 @@ import { Logo } from "@/components/Logo";
 import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderSectionLink } from "@/components/HeaderSectionLink";
 import { UserMenu } from "@/components/UserMenu";
+import { MobileNav } from "@/components/MobileNav";
 
 export async function Header() {
   const session = await getServerSession(authOptions);
@@ -41,11 +42,16 @@ export async function Header() {
           </Link>
           <HeaderSectionLink variant="desktop" />
           {session?.user ? (
-            <UserMenu
-              name={session.user.name ?? "Account"}
-              unread={unread}
-              isAdmin={isAdminEmail(session.user.email)}
-            />
+            // Hidden on a phone: MobileNav below carries the same links, and
+            // two account menus on one header is a worse answer than one that
+            // fits.
+            <div className="hidden sm:block">
+              <UserMenu
+                name={session.user.name ?? "Account"}
+                unread={unread}
+                isAdmin={isAdminEmail(session.user.email)}
+              />
+            </div>
           ) : (
             <Link
               href="/auth/signin"
@@ -60,6 +66,16 @@ export async function Header() {
           >
             Post Ad
           </Link>
+
+          {/* Every link above is hidden below `sm`, and nothing replaced them:
+              on a phone the header was a logo, Post Ad and a section link, with
+              no way to reach Near me, Deals, Events — or to SIGN IN at all. */}
+          <MobileNav
+            signedIn={Boolean(session?.user)}
+            name={session?.user?.name ?? undefined}
+            unread={unread}
+            isAdmin={isAdminEmail(session?.user?.email)}
+          />
         </div>
       </div>
 

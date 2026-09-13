@@ -34,8 +34,17 @@ export function AuthForms({ tab, googleOn }: { tab: "signin" | "register"; googl
     const res = await signIn("credentials", {
       email: f.get("email"), password: f.get("password"), redirect: false,
     });
-    if (res?.error) setSigninError("Incorrect email or password.");
-    else router.push(callbackUrl);
+    if (res?.error) {
+      setSigninError("Incorrect email or password.");
+      return;
+    }
+    router.push(callbackUrl);
+    // Without this the header still says "Sign In" until the visitor reloads.
+    // signIn() sets the cookie, but router.push is a CLIENT navigation, and
+    // Next serves the root layout from the router cache — the copy rendered
+    // while they were signed out. refresh() discards that cache so the server
+    // components re-render with the session that now exists.
+    router.refresh();
   }
 
   const tabClass = (active: boolean) =>
