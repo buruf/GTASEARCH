@@ -135,17 +135,27 @@ export interface AdminListingRow {
   seller: { email: string };
 }
 
-export async function adminSearchListings(q: string): Promise<AdminListingRow[]> {
+/** Every status a listing can hold. An unrecognised value in the URL is
+ *  ignored rather than 500ing — these links are user-editable, the same rule
+ *  the public browse pages follow. */
+export const ADMIN_LISTING_STATUSES = ["active", "draft", "sold", "expired", "deleted"] as const;
+
+export async function adminSearchListings(q: string, status?: string): Promise<AdminListingRow[]> {
   const term = q.trim();
+  const byStatus =
+    status && (ADMIN_LISTING_STATUSES as readonly string[]).includes(status) ? { status } : {};
   const rows = await db.listing.findMany({
-    where: term
-      ? {
-          OR: [
-            { title: { contains: term, mode: "insensitive" } },
-            { user: { email: { contains: term, mode: "insensitive" } } },
-          ],
-        }
-      : {},
+    where: {
+      ...byStatus,
+      ...(term
+        ? {
+            OR: [
+              { title: { contains: term, mode: "insensitive" } },
+              { user: { email: { contains: term, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: {

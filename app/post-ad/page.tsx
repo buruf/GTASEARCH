@@ -8,10 +8,24 @@ import { discardAndRestart } from "./actions";
 
 export const metadata: Metadata = { title: "Post an ad", robots: { index: false } };
 
-export default async function CategoryStepPage() {
+export default async function CategoryStepPage({
+  searchParams,
+}: {
+  searchParams: { category?: string };
+}) {
   const userId = await requireUserId();
   const draft = await getDraft(userId);
   const resume = draft ? firstIncompleteStep(draft) : null;
+
+  // "Post the first ad in Jobs" on an empty category page links here with the
+  // category attached. Without this it was dropped silently and the wizard
+  // opened on a blank "What are you posting?" — a promise the link did not
+  // keep. An unrecognised value is ignored rather than 500ing, and a draft the
+  // seller already started always beats a suggestion from a URL.
+  const suggested =
+    searchParams.category && CATEGORIES.some((c) => c.slug === searchParams.category)
+      ? searchParams.category
+      : "";
 
   return (
     <StepShell current="category" maxReached={resume ?? "category"}>
@@ -31,7 +45,7 @@ export default async function CategoryStepPage() {
 
       <CategoryForm
         categories={CATEGORIES.map((c) => ({ slug: c.slug, label: c.label, icon: c.icon, subcategories: c.subcategories }))}
-        defaultCategory={draft?.category ?? ""}
+        defaultCategory={draft?.category || suggested}
         defaultSubcategory={draft?.subcategory ?? ""}
       />
     </StepShell>

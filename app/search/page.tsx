@@ -105,6 +105,28 @@ function EmptyState({ filters }: { filters: SearchFilters }) {
           : "No listings match those filters."}{" "}
         Try widening your search.
       </p>
+
+      {/* Ten of the twelve classifieds categories have no ads at all, so the
+          category tiles on /classifieds led straight here — and every escape
+          route below ("search all of the GTA", "browse everything") led
+          somewhere just as empty. When a whole category is bare, the honest
+          answer is to say so and offer the only thing that changes it. */}
+      {filters.category && (
+        <p className="mx-auto mt-4 max-w-md text-sm text-ink-muted">
+          Nobody has posted in <strong>{getCategoryLabel(filters.category)}</strong> yet.
+        </p>
+      )}
+      <div className="mt-5">
+        <Link
+          href={filters.category ? `/post-ad?category=${filters.category}` : "/post-ad"}
+          className="inline-block rounded-btn bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          {filters.category
+            ? `Post the first ad in ${getCategoryLabel(filters.category)}`
+            : "Post an ad"}
+        </Link>
+      </div>
+
       <ul className="mt-5 flex flex-wrap justify-center gap-2 text-sm">
         {filters.cities.length > 0 && (
           <li>

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { requireAdmin, adminSearchListings } from "@/lib/admin";
+import { requireAdmin, adminSearchListings, ADMIN_LISTING_STATUSES } from "@/lib/admin";
 import { formatRelativeTime } from "@/lib/format";
 import { RowActions } from "./RowActions";
 
@@ -14,10 +14,27 @@ const CHIP: Record<string, string> = {
 
 export default async function AdminListingsPage({
   searchParams,
-}: { searchParams: { q?: string } }) {
+}: { searchParams: { q?: string; status?: string } }) {
   await requireAdmin();
   const q = searchParams.q ?? "";
-  const rows = await adminSearchListings(q);
+  const status = (ADMIN_LISTING_STATUSES as readonly string[]).includes(searchParams.status ?? "")
+    ? searchParams.status
+    : undefined;
+  const rows = await adminSearchListings(q, status);
+
+  const chipHref = (s?: string) => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (s) p.set("status", s);
+    const qs = p.toString();
+    return qs ? `/admin/listings?${qs}` : "/admin/listings";
+  };
+  const chipClass = (on: boolean) =>
+    `inline-block rounded-btn border px-3 py-1.5 text-xs font-medium ${
+      on
+        ? "border-brand bg-brand text-white"
+        : "border-line bg-surface text-ink-muted hover:border-brand hover:text-brand"
+    }`;
 
   return (
     <>
@@ -27,14 +44,30 @@ export default async function AdminListingsPage({
           placeholder="Search by title or seller email…"
           className="h-11 w-full rounded-btn border border-line px-3 text-sm focus:border-brand"
         />
+        {/* Carried through the search box, so filtering and then searching does
+            not silently drop the status the admin arrived with. */}
+        {status && <input type="hidden" name="status" value={status} />}
         <button type="submit" className="h-11 rounded-btn bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-dark">
           Search
         </button>
       </form>
 
+      {/* The overview's Drafts / Sold / Expired tiles link straight into these.
+          That is why the filter exists: a count you cannot open is a dead end,
+          which is exactly what the owner reported. */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link href={chipHref()} className={chipClass(!status)}>All</Link>
+        {ADMIN_LISTING_STATUSES.map((s) => (
+          <Link key={s} href={chipHref(s)} className={chipClass(status === s)}>
+            {s[0].toUpperCase() + s.slice(1)}
+          </Link>
+        ))}
+      </div>
+
       <p className="mt-3 text-xs text-ink-faint">
         {rows.length} {rows.length === 1 ? "result" : "results"}
-        {rows.length === 50 ? " (capped at 50 — narrow the search)" : ""} · all statuses included
+        {rows.length === 50 ? " (capped at 50 — narrow the search)" : ""}
+        {status ? ` · ${status} only` : " · all statuses included"}
       </p>
 
       <ul className="mt-3 divide-y divide-line rounded-card border border-line bg-surface">
