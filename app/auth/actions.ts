@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { RegisterSchema } from "@/lib/validation";
 import { createUser, hashPassword, verifyPassword } from "@/lib/users";
+import { createVerificationToken } from "@/lib/email-verification";
+import { currentUserId } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { canonicalEmail, isDisposableEmail, looksAutomated } from "@/lib/email-identity";
 import { db } from "@/lib/db";
 import { DUMMY_HASH } from "@/lib/auth";
 import { createResetToken, consumeResetToken, invalidateResetTokens } from "@/lib/tokens";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
 import { emailEnabled, appUrl } from "@/lib/env";
 
 export type FormState = { ok: boolean; error?: string; fieldErrors?: Record<string, string> };
@@ -75,9 +77,51 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     return REFUSED;
   }
 
-  await createUser(parsed.data);
+  const created = await createUser(parsed.data);
+
+  // Send the confirmation link only when this call actually made an account.
+  // createUser reports that without revealing it to the caller's response, so
+  // a duplicate sign-up still returns the identical { ok: true } below and
+  // cannot be used to discover which addresses are registered — while also not
+  // mailing "confirm your account" to somebody who already has one, which is
+  // how an enumeration oracle turns into a harassment tool.
+  if (created.userId && emailEnabled()) {
+    const raw = await createVerificationToken(created.userId);
+    await sendVerificationEmail(parsed.data.email, `${appUrl()}/auth/verify/${raw}`);
+  }
+
   // Identical response whether the email was new, already taken, or an alias of
   // an inbox that already has an account (anti-enumeration).
+  return { ok: true };
+}
+
+/**
+ * Sends a fresh confirmation link to the signed-in account.
+ *
+ * Rate limited per user, because this is a button that makes us send mail: a
+ * loop on it would turn the site into somebody else's spam relay and burn the
+ * sending domain's reputation, which is far harder to undo than a bounce.
+ */
+export async function resendVerificationAction(): Promise<FormState> {
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "Sign in first." };
+  if (!emailEnabled()) {
+    return { ok: false, error: "Email isn't configured yet. Please contact support." };
+  }
+  if (!rateLimit(`verify-resend:${userId}`, 3, 60 * 60 * 1000)) {
+    return { ok: false, error: "We've sent that a few times already. Try again in an hour." };
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, emailVerified: true },
+  });
+  if (!user) return { ok: false, error: "Sign in first." };
+  // Already done: say so rather than sending a link that confirms nothing.
+  if (user.emailVerified) return { ok: true };
+
+  const raw = await createVerificationToken(userId);
+  await sendVerificationEmail(user.email, `${appUrl()}/auth/verify/${raw}`);
   return { ok: true };
 }
 

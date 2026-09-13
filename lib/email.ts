@@ -63,6 +63,22 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   );
 }
 
+/**
+ * Confirms a newly registered address actually reaches the person.
+ *
+ * Deliberately spells out what the account cannot do yet, rather than only
+ * "click here": somebody who ignores this and comes back next week to post an
+ * ad should be able to work out why they are being stopped.
+ */
+export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<boolean> {
+  if (!emailEnabled()) return false;
+  return deliver(
+    to,
+    "Confirm your email for GTASearch",
+    `Welcome to GTASearch.\n\nConfirm this address to finish setting up your account (link valid for 24 hours):\n${verifyUrl}\n\nUntil you do you can browse and sign in, but you won't be able to post an ad, message a seller, claim a business or leave a review.\n\nIf you didn't create this account, ignore this email — nothing was set up.`,
+  );
+}
+
 /** One email per conversation, sent only for the recipient's first unread
  *  message in the thread — see sendMessage's shouldNotify in lib/messages.ts. */
 export async function sendMessageAlertEmail(

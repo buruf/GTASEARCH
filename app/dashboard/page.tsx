@@ -4,6 +4,8 @@ import { requireUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { MyAdRow } from "./MyAdRow";
 import { SettingsForms } from "./SettingsForms";
+import { VerifyBanner } from "@/components/VerifyBanner";
+import { isVerified } from "@/lib/email-verification";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -14,7 +16,10 @@ export default async function DashboardPage() {
   const userId = await requireUserId();
 
   const [user, listings] = await Promise.all([
-    db.user.findUnique({ where: { id: userId }, select: { name: true, phone: true } }),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { name: true, phone: true, email: true, emailVerified: true, createdAt: true },
+    }),
     db.listing.findMany({
       where: { userId, status: { not: "deleted" } },
       select: {
@@ -29,6 +34,11 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
+
+      {/* Shown before they meet the gate, not after. Being refused at the
+          publish step, having already written the whole ad, is the worst
+          moment to learn a requirement exists. */}
+      {user && !isVerified(user) && <VerifyBanner email={user.email} />}
 
       <div className="mt-6 flex gap-1 rounded-btn bg-surface-alt p-1">
         <span className="flex-1 rounded-btn bg-brand py-2 text-center text-sm font-semibold text-white">

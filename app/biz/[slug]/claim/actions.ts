@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentUserId } from "@/lib/auth";
+import { isVerifiedUser, VERIFY_REQUIRED_MESSAGE } from "@/lib/email-verification";
 import { db } from "@/lib/db";
 import { ClaimError, submitClaim } from "@/lib/claims";
 import { CLAIM_ROLES, ClaimSchema } from "@/lib/validation";
@@ -24,6 +25,12 @@ export async function submitClaimAction(
   const slug = String(formData.get("slug") ?? "");
   if (!userId) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/biz/${slug}/claim`)}`);
+  }
+
+  // A claim hands over a listing and turns on its verified badge, so the
+  // claimant must at minimum own the inbox they registered with.
+  if (!(await isVerifiedUser(userId))) {
+    return { error: VERIFY_REQUIRED_MESSAGE };
   }
 
   // Claims are reviewed by a human, so the cost of spam is somebody's time.

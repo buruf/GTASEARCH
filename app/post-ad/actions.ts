@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/auth";
+import { verificationGate } from "@/lib/email-verification";
 import { db } from "@/lib/db";
 import { getOrCreateDraft, getDraft, discardDraft } from "@/lib/draft";
 import { CategoryStepSchema, DetailsStepSchema, LocationStepSchema, PhotosStepSchema } from "@/lib/validation";
@@ -88,6 +89,9 @@ export async function savePhotos(_prev: FormState, formData: FormData): Promise<
 
 export async function publishAction(_prev: FormState, _formData: FormData): Promise<FormState> {
   const userId = await requireUserId();
+  // An unconfirmed address must not put an ad in front of the public.
+  const gate = await verificationGate(userId);
+  if (gate) return gate;
   if (!rateLimit(`publish:${userId}`, 10, 24 * 60 * 60 * 1000)) {
     return { ok: false, error: "You've reached the daily posting limit." };
   }
@@ -103,6 +107,10 @@ export async function publishAction(_prev: FormState, _formData: FormData): Prom
  */
 export async function publishWithBoostAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const userId = await requireUserId();
+  // Checked before the boost is priced, so an unverified seller is never sent
+  // to Stripe for an ad that then cannot go live.
+  const gate = await verificationGate(userId);
+  if (gate) return gate;
   const tier = String(formData.get("tier") ?? "");
   if (!isBoostTierKey(tier)) return { ok: false, error: "Pick a boost option." };
   if (!rateLimit(`publish:${userId}`, 10, 24 * 60 * 60 * 1000)) {

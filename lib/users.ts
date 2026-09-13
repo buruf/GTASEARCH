@@ -13,20 +13,28 @@ export async function hashPassword(plain: string): Promise<string> {
 }
 
 /**
- * Registers a user. Returns { ok: true } whether or not the email was already
- * taken — the caller must not be able to distinguish (anti-enumeration; the
- * same class of leak fixed in the eduyro audit). The duplicate attempt simply
- * creates nothing.
+ * Registers a user.
+ *
+ * `ok` is always true, whether or not the address was already taken — the
+ * CALLER's response must not distinguish the two (anti-enumeration; the same
+ * class of leak fixed in the eduyro audit). A duplicate simply creates
+ * nothing.
+ *
+ * `userId` is present only when this call actually created the account. It
+ * exists so the caller can send a confirmation link to a genuinely new
+ * registration without mailing one to somebody who already has an account —
+ * which would turn sign-up into a way to spam a stranger's inbox. It must
+ * never leak into the response the browser sees.
  */
 export async function createUser(input: {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-}): Promise<{ ok: true }> {
+}): Promise<{ ok: true; userId?: string }> {
   const passwordHash = await hashPassword(input.password);
   try {
-    await db.user.create({
+    const created = await db.user.create({
       data: {
         // emailCanonical is deliberately absent: Postgres generates it from
         // this address, so writing it here would be rejected — and no caller,
@@ -35,7 +43,9 @@ export async function createUser(input: {
         name: `${input.firstName} ${input.lastName}`.trim(),
         passwordHash,
       },
+      select: { id: true },
     });
+    return { ok: true, userId: created.id };
   } catch (e: unknown) {
     // P2002 = unique violation, on `email` OR on the generated
     // `emailCanonical` — an alias of an inbox that already has an account

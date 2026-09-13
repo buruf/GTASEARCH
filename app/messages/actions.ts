@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/lib/auth";
+import { verificationGate } from "@/lib/email-verification";
 import { db } from "@/lib/db";
 import {
   getOrCreateConversation, sendMessage,
@@ -60,6 +61,10 @@ async function deliver(senderId: string, conversationId: string, content: string
 
 export async function startConversationAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const userId = await requireUserId();
+  // Reaching a stranger's inbox is exactly what an unconfirmed account must
+  // not be able to do.
+  const gate = await verificationGate(userId);
+  if (gate) return gate;
   const listingId = String(formData.get("listingId") ?? "");
   const parsed = MessageSchema.safeParse({ content: formData.get("content") });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
@@ -91,6 +96,8 @@ export async function startConversationAction(_prev: FormState, formData: FormDa
 
 export async function replyAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const userId = await requireUserId();
+  const gate = await verificationGate(userId);
+  if (gate) return gate;
   const conversationId = String(formData.get("conversationId") ?? "");
   const parsed = MessageSchema.safeParse({ content: formData.get("content") });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };

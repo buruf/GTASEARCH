@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { currentUserId } from "@/lib/auth";
+import { isVerifiedUser, VERIFY_REQUIRED_MESSAGE } from "@/lib/email-verification";
 import { db } from "@/lib/db";
 import { ReviewError, deleteOwnReview, respondToReview, upsertReview } from "@/lib/reviews";
 import { OwnerResponseSchema, ReviewSchema } from "@/lib/validation";
@@ -26,6 +27,12 @@ export async function submitReviewAction(
 ): Promise<ReviewState> {
   const userId = await currentUserId();
   if (!userId) return { error: "Please sign in to write a review." };
+
+  // A review moves a public average that a real business trades on. An
+  // unconfirmed address is not enough standing to do that.
+  if (!(await isVerifiedUser(userId))) {
+    return { error: VERIFY_REQUIRED_MESSAGE };
+  }
 
   const slug = String(formData.get("slug") ?? "");
   // Rate limited per user, not per business: the abuse case is one account
